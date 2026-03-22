@@ -6,29 +6,8 @@ import { View, ActivityIndicator } from 'react-native';
 import { supabase } from '../../src/lib/supabase';
 
 export default function TabsLayout() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    checkSession();
-  }, []);
-
-  const checkSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.replace('/');
-    }
-    setLoading(false);
-  };
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.surface }}>
-        <ActivityIndicator color={Colors.primary} size="large" />
-      </View>
-    );
-  }
-
+  // Sesja jest teraz obsługiwana globalnie w app/_layout.tsx
+  // Nie potrzebujemy tu checkSession()
   return (
     <Tabs screenOptions={{ 
       headerShown: false,

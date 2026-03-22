@@ -12,30 +12,11 @@ const { width, height } = Dimensions.get('window');
 
 export default function LandingScreen() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    checkSession();
-  }, []);
+  // Sesja jest teraz obsługiwana globalnie w app/_layout.tsx
+  // Nie potrzebujemy tu checkSession()
 
-  const checkSession = async () => {
-    try {
-      console.log('Landing: Checking session via getUser()...');
-      // getUser() jest pewniejsze niż getSession(), bo weryfikuje token
-      const { data: { user }, error } = await supabase.auth.getUser();
-      
-      if (user && !error) {
-        console.log('Landing: User found, redirecting to tabs', user.id);
-        router.replace('/(tabs)');
-      } else {
-        console.log('Landing: No active session or error, staying on hero page');
-      }
-    } catch (e) {
-      console.error('Landing: Session check critical failure', e);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (

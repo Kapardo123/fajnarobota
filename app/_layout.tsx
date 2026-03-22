@@ -1,8 +1,9 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { PaperProvider, MD3LightTheme, configureFonts, FAB, Portal } from 'react-native-paper';
 import { useState } from 'react';
 import DebugPanel from '../components/DebugPanel';
 import { StyleSheet, View } from 'react-native';
+import { supabase } from '../src/lib/supabase';
 
 // Eksportujemy funkcję do otwierania panelu globalnie (uproszczenie dla prototypu)
 export let showDebugPanel: () => void = () => {};
@@ -24,21 +25,47 @@ const theme = {
 
 export default function RootLayout() {
   const [debugVisible, setDebugVisible] = useState(false);
+  const router = useRouter();
+  const segments = useSegments();
   showDebugPanel = () => setDebugVisible(true);
 
-  const [loaded, error] = useFonts({
+  const [loaded, fontError] = useFonts({
     Montserrat_400Regular,
     Montserrat_700Bold,
     Montserrat_900Black,
   });
 
+  // Globalny listener stanu autoryzacji
   useEffect(() => {
-    if (loaded || error) {
+    if (!loaded) return;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth Event:', event, session ? 'User logged in' : 'User logged out');
+      
+      const inAuthGroup = segments[0] === '(auth)';
+      const inTabsGroup = segments[0] === '(tabs)';
+
+      if (!session && inTabsGroup) {
+        // Użytkownik wylogowany, a jest w zakładkach -> rzuć go na start
+        router.replace('/');
+      } else if (session && (inAuthGroup || segments.length === 0 || segments[0] === 'index')) {
+        // Użytkownik zalogowany, a jest na logowaniu/rejestracji/startowej -> rzuć go do aplikacji
+        router.replace('/(tabs)');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [loaded, segments]);
+
+  useEffect(() => {
+    if (loaded || fontError) {
       SplashScreen.hideAsync();
     }
-  }, [loaded, error]);
+  }, [loaded, fontError]);
 
-  if (!loaded && !error) {
+  if (!loaded && !fontError) {
     return null;
   }
 
