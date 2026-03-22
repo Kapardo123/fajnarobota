@@ -1,12 +1,12 @@
-import { View, StyleSheet, Dimensions, Animated, PanResponder, ImageBackground, Modal, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { Card, Text, Button, Chip, IconButton, Portal, Dialog } from 'react-native-paper';
+import { View, StyleSheet, Dimensions, Animated, PanResponder, ImageBackground, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Card, Text, Button, Chip, IconButton, Portal, Dialog, Modal } from 'react-native-paper';
 import { useState, useRef, useEffect } from 'react';
 import { Colors } from '../../constants/Colors';
 import { Config } from '../../constants/Config';
 import { supabase } from '../../src/lib/supabase';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../src/lib/supabase';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
