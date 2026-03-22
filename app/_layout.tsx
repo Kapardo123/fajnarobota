@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
-import { PaperProvider, MD3LightTheme, configureFonts } from 'react-native-paper';
+import { PaperProvider, MD3LightTheme, configureFonts, FAB, Portal } from 'react-native-paper';
 import { useState } from 'react';
 import DebugPanel from '../components/DebugPanel';
+import { StyleSheet, View } from 'react-native';
 
 // Eksportujemy funkcję do otwierania panelu globalnie (uproszczenie dla prototypu)
 export let showDebugPanel: () => void = () => {};
@@ -49,8 +50,30 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
         </Stack>
+        
+        <Portal>
+          <FAB
+            icon="bug"
+            style={styles.fab}
+            onPress={() => setDebugVisible(true)}
+            size="small"
+            color="white"
+          />
+        </Portal>
+
         <DebugPanel visible={debugVisible} onHide={() => setDebugVisible(false)} />
       </PaperProvider>
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 80, // Powyżej paska tabów jeśli jest widoczny
+    backgroundColor: 'rgba(255, 0, 0, 0.5)', // Półprzezroczysty czerwony, żeby nie przeszkadzał ale był widoczny
+    borderRadius: 28,
+  },
+});
