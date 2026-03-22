@@ -88,14 +88,31 @@ export default function RegisterScreen() {
       skills: ['Budowa', 'Remonty', 'Sprzątanie', 'Ochrona', 'Złota rączka', 'Ogrodnik']
     },
     {
+      title: 'IT & Biuro',
+      icon: 'laptop',
+      skills: ['Pakiet Office', 'Excel', 'Social Media', 'Grafika', 'Podstawy IT', 'Wprowadzanie danych']
+    },
+    {
+      title: 'Medycyna & Zdrowie',
+      icon: 'medical-bag',
+      skills: ['Pierwsza pomoc', 'Opieka medyczna', 'Fizjoterapia', 'Masaż', 'Pielęgniarstwo', 'Sanepid']
+    },
+    {
       title: 'Inne',
       icon: 'dots-horizontal',
-      skills: ['Student', 'Uczeń', 'Social Media', 'Opieka nad dziećmi', 'Obsługa komputera']
+      skills: ['Student', 'Uczeń', 'Opieka nad dziećmi', 'Obsługa komputera']
     }
   ];
 
   const LANGUAGES = ['Angielski', 'Niemiecki', 'Ukraiński', 'Rosyjski', 'Francuski', 'Hiszpański', 'Włoski'];
-  const LANGUAGE_LEVELS = ['A1 (Podstawowy)', 'A2 (Podstawowy+)', 'B1 (Średni)', 'B2 (Średni wyższy)', 'C1 (Zaawansowany)', 'C2 (Native)'];
+  const LANGUAGE_LEVELS = [
+    { id: 'A1', label: 'A1', desc: 'Podstawowe zwroty' },
+    { id: 'A2', label: 'A2', desc: 'Prosta komunikacja' },
+    { id: 'B1', label: 'B1', desc: 'Samodzielność' },
+    { id: 'B2', label: 'B2', desc: 'Płynna rozmowa' },
+    { id: 'C1', label: 'C1', desc: 'Zaawansowany' },
+    { id: 'C2', label: 'C2', desc: 'Native / Biegły' }
+  ];
 
   const SUPERPOWERS = [
     '#OgarniamChaos', 
@@ -667,18 +684,24 @@ export default function RegisterScreen() {
 
             <View style={{ marginTop: 8 }}>
               <Text style={styles.sectionLabel}>Języki obce</Text>
-              <Text style={styles.helperText}>Wybierz język, a następnie określ jego poziom.</Text>
+              <Text style={styles.helperText}>Wybierz język i określ swój poziom:</Text>
+              <View style={styles.languageInfoCard}>
+                <View style={styles.infoRow}><Text style={styles.infoTag}>A1/A2</Text><Text style={styles.infoText}>Podstawy, proste zdania</Text></View>
+                <View style={styles.infoRow}><Text style={styles.infoTag}>B1/B2</Text><Text style={styles.infoText}>Komunikacja swobodna</Text></View>
+                <View style={styles.infoRow}><Text style={styles.infoTag}>C1/C2</Text><Text style={styles.infoText}>Biegłość, praca w języku</Text></View>
+              </View>
+              
               {LANGUAGES.map(lang => (
                 <View key={lang} style={styles.languageRow}>
                   <Text style={styles.languageName}>{lang}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.levelContainer}>
                     {LANGUAGE_LEVELS.map(level => {
-                      const isSelected = candidateData.languages.find(l => l.name === lang && l.level === level);
+                      const isSelected = candidateData.languages.find(l => l.name === lang && l.level === level.id);
                       return (
                         <Chip
-                          key={level}
+                          key={level.id}
                           selected={!!isSelected}
-                          onPress={() => toggleLanguage(lang, level)}
+                          onPress={() => toggleLanguage(lang, level.id)}
                           style={[
                             styles.levelChip,
                             isSelected && { backgroundColor: Colors.primary }
@@ -689,7 +712,7 @@ export default function RegisterScreen() {
                           ]}
                           showSelectedCheck={false}
                         >
-                          {level.split(' ')[0]}
+                          {level.label}
                         </Chip>
                       );
                     })}
@@ -1062,6 +1085,29 @@ const styles = StyleSheet.create({
   levelChipText: {
     fontSize: 11,
     fontFamily: 'Montserrat_600SemiBold',
+  },
+  languageInfoCard: {
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
+    gap: 8,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  infoTag: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 12,
+    color: Colors.primary,
+    width: 45,
+  },
+  infoText: {
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 12,
+    color: Colors.textLight,
   },
   privacyCard: {
     flexDirection: 'row',
