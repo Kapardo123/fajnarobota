@@ -300,21 +300,21 @@ export default function SwipeScreen() {
       >
         <LinearGradient
           colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)', 'rgba(0,0,0,0.95)']}
-          locations={[0, 0.15, 0.4, 0.6, 0.9]}
+          locations={[0, 0.2, 0.4, 0.6, 0.9]}
           style={styles.gradient}
         >
           {/* TOP SECTION */}
           <View style={styles.topBadgesRow}>
             {item.matchScore ? (
               <View style={styles.matchBadgeModern}>
-                <MaterialCommunityIcons name="flash" size={12} color={Colors.primary} />
-                <Text style={styles.matchTextModern}>{item.matchScore}%</Text>
+                <MaterialCommunityIcons name="flash" size={14} color={Colors.primary} />
+                <Text style={styles.matchTextModern}>{item.matchScore}% DOPASOWANIA</Text>
               </View>
             ) : <View />}
             
             <View style={styles.distanceBadgeModern}>
-              <MaterialCommunityIcons name="map-marker-outline" size={12} color="#fff" />
-              <Text style={styles.distanceTextModern}>BLISKO CIEBIE</Text>
+              <MaterialCommunityIcons name="map-marker-distance" size={14} color="#fff" />
+              <Text style={styles.distanceTextModern}>W TWOJEJ OKOLICY</Text>
             </View>
           </View>
           
@@ -323,13 +323,15 @@ export default function SwipeScreen() {
             {item.isBlurred ? (
               <View style={styles.lockContainerModern}>
                 <View style={styles.lockIconCircle}>
-                  <MaterialCommunityIcons name="shield-lock" size={40} color={Colors.primary} />
+                  <MaterialCommunityIcons name="shield-lock" size={50} color={Colors.primary} />
                 </View>
-                <Text style={styles.lockText}>Profil ukryty</Text>
+                <Text style={styles.lockText}>Profil ukryty (Blind Hiring)</Text>
+                <Text style={styles.lockSubtext}>Zdjęcie zobaczysz po dopasowaniu</Text>
               </View>
             ) : (
               <View style={styles.priceCenterContainer}>
                 <View style={styles.priceBadgeLarge}>
+                  <Text style={styles.priceLabelLarge}>STAWKA GODZINOWA</Text>
                   <Text style={styles.priceValueLarge}>{item.price}</Text>
                 </View>
               </View>
@@ -340,10 +342,10 @@ export default function SwipeScreen() {
           <View style={styles.overlayContentModern}>
             <View style={styles.headerRowModern}>
               <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.cardTitleModern} numberOfLines={1}>{item.title.split(',')[0]}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={styles.cardTitleModern}>{item.title}</Text>
                   {item.isVerified && (
-                    <MaterialCommunityIcons name="check-decagram" size={20} color={Colors.primary} />
+                    <MaterialCommunityIcons name="check-decagram" size={24} color={Colors.primary} />
                   )}
                 </View>
                 <Text style={styles.cardSubtitleModern}>{item.subtitle}</Text>
@@ -352,23 +354,30 @@ export default function SwipeScreen() {
 
             <View style={styles.infoSectionModern}>
               {(item.description || item.bio) && (
-                <Text style={styles.cardDescriptionModern} numberOfLines={2}>
-                  {item.description || item.bio}
-                </Text>
+                <View style={styles.descriptionBoxModern}>
+                  <Text style={styles.cardDescriptionModern} numberOfLines={3}>
+                    {item.description || item.bio}
+                  </Text>
+                </View>
               )}
 
               {item.type === 'candidate' && item.experienceHistory && item.experienceHistory.length > 0 && (
                 <View style={styles.experienceSnippetModern}>
-                  <Text style={styles.experienceValueModern} numberOfLines={1}>
-                    💼 {item.experienceHistory[0].position}
-                  </Text>
+                  <MaterialCommunityIcons name="history" size={16} color={Colors.primary} style={{ marginRight: 8 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.experienceLabelModern}>OSTATNIE DOŚWIADCZENIE:</Text>
+                    <Text style={styles.experienceValueModern} numberOfLines={1}>
+                      {item.experienceHistory[0].position} @ {item.experienceHistory[0].company}
+                    </Text>
+                  </View>
                 </View>
               )}
             </View>
 
             <View style={styles.tagGridModern}>
-              {item.tags.slice(0, 3).map((tag, i) => (
+              {item.tags.map((tag, i) => (
                 <View key={i} style={styles.tagModern}>
+                  <MaterialCommunityIcons name={tag.icon as any} size={14} color={Colors.primary} />
                   <Text style={styles.tagTextModern}>{tag.text}</Text>
                 </View>
               ))}
@@ -537,7 +546,7 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
-    padding: 20,
+    padding: 24, // Zwiększony padding dla efektu "oddechu"
     justifyContent: 'space-between',
   },
   topBadgesRow: {
@@ -547,7 +556,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   matchBadgeModern: {
-    flexDirection: 'row', 
+    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: 12,
@@ -577,55 +586,69 @@ const styles = StyleSheet.create({
   distanceTextModern: {
     color: '#fff',
     fontFamily: 'Montserrat_700Bold',
-    fontSize: 10, 
+    fontSize: 10,
     letterSpacing: 1,
   },
   middleContainerModern: {
     flex: 1,
-    justifyContent: 'center', 
+    justifyContent: 'center',
     alignItems: 'center',
   },
   priceCenterContainer: {
-    alignItems: 'center', 
+    alignItems: 'center',
     justifyContent: 'center',
   },
   priceBadgeLarge: {
     backgroundColor: 'rgba(0,0,0,0.4)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 16,
-    borderWidth: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 20,
+    borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
+  },
+  priceLabelLarge: {
+    fontSize: 10,
+    fontFamily: 'Montserrat_700Bold',
+    color: Colors.primary,
+    letterSpacing: 2,
+    marginBottom: 6,
   },
   priceValueLarge: {
     color: '#fff',
     fontFamily: 'Montserrat_900Black',
-    fontSize: 20,
+    fontSize: 24,
   },
   lockContainerModern: {
     alignItems: 'center',
-    gap: 10,
+    gap: 15,
   },
   lockIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.2)',
   },
   lockText: {
     color: '#fff',
     fontFamily: 'Montserrat_800ExtraBold',
-    fontSize: 16,
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  lockSubtext: {
+    color: 'rgba(255,255,255,0.6)',
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 13,
+    marginTop: 4,
     textAlign: 'center',
   },
   overlayContentModern: {
-    gap: 12,
-    paddingBottom: 5,
+    gap: 20, // Zwiększony gap między sekcjami
+    paddingBottom: 10,
   },
   headerRowModern: {
     flexDirection: 'row',
@@ -633,60 +656,75 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardTitleModern: {
-    fontSize: 24,
+    fontSize: 30,
     fontFamily: 'Montserrat_900Black',
     color: '#fff',
-    lineHeight: 28,
+    lineHeight: 34,
   },
   cardSubtitleModern: {
     fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 15,
+    fontSize: 17,
     color: 'rgba(255,255,255,0.85)',
-    marginTop: 2,
+    marginTop: 4,
   },
   infoSectionModern: {
-    gap: 8,
+    gap: 16, // Zwiększony gap
+  },
+  descriptionBoxModern: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    padding: 16,
+    borderRadius: 14,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary,
   },
   experienceSnippetModern: {
     flexDirection: 'row',
     backgroundColor: 'rgba(0,0,0,0.4)',
-    padding: 10,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
   },
+  experienceLabelModern: {
+    fontSize: 9,
+    fontFamily: 'Montserrat_700Bold',
+    color: Colors.primary,
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
   experienceValueModern: {
     color: '#fff',
     fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 13,
+    fontSize: 14,
   },
   cardDescriptionModern: {
     fontFamily: 'Montserrat_400Regular',
-    fontSize: 13,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.95)',
-    lineHeight: 18,
+    lineHeight: 20,
     fontStyle: 'italic',
   },
   tagGridModern: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 12,
   },
   tagModern: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   tagTextModern: {
     color: '#fff',
     fontFamily: 'Montserrat_500Medium',
-    fontSize: 11,
+    fontSize: 13,
   },
   tagMoreModern: {
     backgroundColor: 'rgba(255,255,255,0.15)',
