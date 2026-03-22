@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Modal, Dimensions, Image, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, Modal, Dimensions, Image, TouchableOpacity, PanResponder, Animated } from 'react-native';
 import { Text, Button, IconButton, ActivityIndicator } from 'react-native-paper';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { Colors } from '../constants/Colors';
@@ -18,38 +18,89 @@ interface ImageEditorModalProps {
 export default function ImageEditorModal({ visible, imageUri, onSave, onCancel }: ImageEditorModalProps) {
   const [processing, setProcessing] = useState(false);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [displaySize, setDisplaySize] = useState({ width: 0, height: 0 });
+  
+  const pan = useRef(new Animated.ValueXY()).current;
+  const lastOffset = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (imageUri) {
       Image.getSize(imageUri, (w, h) => {
         setImageSize({ width: w, height: h });
+        
+        // Oblicz rozmiar wyświetlania w trybie "cover" dla kwadratu CROP_SIZE
+        let dWidth, dHeight;
+        if (w > h) {
+          dHeight = CROP_SIZE;
+          dWidth = (w / h) * CROP_SIZE;
+        } else {
+          dWidth = CROP_SIZE;
+          dHeight = (h / w) * CROP_SIZE;
+        }
+        setDisplaySize({ width: dWidth, height: dHeight });
+        
+        // Zresetuj pozycję do środka
+        const initialX = -(dWidth - CROP_SIZE) / 2;
+        const initialY = -(dHeight - CROP_SIZE) / 2;
+        pan.setValue({ x: initialX, y: initialY });
+        lastOffset.current = { x: initialX, y: initialY };
       });
     }
   }, [imageUri]);
 
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (e, gesture) => {
+        const newX = lastOffset.current.x + gesture.dx;
+        const newY = lastOffset.current.y + gesture.dy;
+        
+        // Opcjonalnie: ogranicz przesuwanie, żeby nie wyjść poza kadrowanie
+        // (pozostawiam bez ograniczeń dla większej swobody, ale można dodać clamp)
+        pan.setValue({ x: newX, y: newY });
+      },
+      onPanResponderRelease: (e, gesture) => {
+        lastOffset.current.x += gesture.dx;
+        lastOffset.current.y += gesture.dy;
+      },
+    })
+  ).current;
+
   const handleCrop = async () => {
-    if (!imageUri) return;
+    if (!imageUri || !imageSize.width) return;
 
     try {
       setProcessing(true);
       
-      // Obliczamy wymiary dla kwadratowego kadrowania (centrowanie)
-      const minDimension = Math.min(imageSize.width, imageSize.height);
-      const originX = (imageSize.width - minDimension) / 2;
-      const originY = (imageSize.height - minDimension) / 2;
+      const scaleFactor = imageSize.width / displaySize.width;
+      
+      // Obliczamy originX i originY na podstawie przesunięcia obrazu względem ramki (0,0)
+      // Ramka ma rozmiar CROP_SIZE. Obraz jest przesunięty o pan.x, pan.y.
+      // Więc lewy górny róg ramki znajduje się w punkcie (-pan.x, -pan.y) na obrazie.
+      
+      const originX = Math.max(0, (-lastOffset.current.x) * scaleFactor);
+      const originY = Math.max(0, (-lastOffset.current.y) * scaleFactor);
+      const cropWidth = CROP_SIZE * scaleFactor;
+      const cropHeight = CROP_SIZE * scaleFactor;
+
+      // Zabezpieczenie przed wyjściem poza wymiary zdjęcia
+      const finalOriginX = Math.min(originX, imageSize.width - 10);
+      const finalOriginY = Math.min(originY, imageSize.height - 10);
+      const finalWidth = Math.min(cropWidth, imageSize.width - finalOriginX);
+      const finalHeight = Math.min(cropHeight, imageSize.height - finalOriginY);
 
       const result = await manipulateAsync(
         imageUri,
         [
           {
             crop: {
-              originX,
-              originY,
-              width: minDimension,
-              height: minDimension,
+              originX: finalOriginX,
+              originY: finalOriginY,
+              width: finalWidth,
+              height: finalHeight,
             },
           },
-          { resize: { width: 600, height: 600 } }, // Optymalizacja rozmiaru
+          { resize: { width: 600, height: 600 } },
         ],
         { compress: 0.8, format: SaveFormat.JPEG }
       );
@@ -67,22 +118,40 @@ export default function ImageEditorModal({ visible, imageUri, onSave, onCancel }
       <View style={styles.container}>
         <View style={styles.header}>
           <IconButton icon="close" iconColor="#fff" onPress={onCancel} disabled={processing} />
-          <Text style={styles.headerTitle}>Wyśrodkuj zdjęcie</Text>
+          <Text style={styles.headerTitle}>Dostosuj zdjęcie</Text>
           <View style={{ width: 48 }} />
         </View>
 
         <View style={styles.content}>
           <View style={styles.cropArea}>
-            {imageUri ? (
-              <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="cover" />
-            ) : null}
-            <View style={styles.overlay}>
+            {imageUri && displaySize.width > 0 ? (
+              <Animated.View
+                style={[
+                  {
+                    width: displaySize.width,
+                    height: displaySize.height,
+                    transform: pan.getTranslateTransform(),
+                  },
+                ]}
+                {...panResponder.panHandlers}
+              >
+                <Image 
+                  source={{ uri: imageUri }} 
+                  style={styles.previewImage} 
+                  resizeMode="stretch" 
+                />
+              </Animated.View>
+            ) : (
+              <ActivityIndicator color={Colors.primary} />
+            )}
+            
+            <View style={styles.overlay} pointerEvents="none">
               <View style={styles.frame} />
             </View>
           </View>
           
           <Text style={styles.hint}>
-            Zdjęcie zostanie automatycznie wykadrowane do kwadratu i wyśrodkowane.
+            Przesuń zdjęcie, aby dopasować je do ramki.
           </Text>
         </View>
 
