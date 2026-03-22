@@ -37,6 +37,8 @@ interface CandidateDetails {
   blind_hiring: boolean;
   bio?: string;
   experience_history?: { company: string; position: string; period: string }[];
+  availability_status?: string;
+  personality_traits?: { label: string; value: number }[];
 }
 
 interface EmployerDetails {
@@ -78,6 +80,7 @@ export default function ProfileScreen() {
   const [newBio, setNewBio] = useState('');
   const [tempExp, setTempExp] = useState({ company: '', position: '', period: '' });
   const [uploading, setUploading] = useState(false);
+  const [isEditingAvailability, setIsEditingAvailability] = useState(false);
 
   // Image editing state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -470,6 +473,26 @@ export default function ProfileScreen() {
     }
   };
 
+  const updateAvailability = async (status: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('candidates')
+        .update({ availability_status: status })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      setCandidateDetails(prev => prev ? { ...prev, availability_status: status } : null);
+      setIsEditingAvailability(false);
+      Alert.alert('Sukces', 'Status dostępności został zaktualizowany.');
+    } catch (error: any) {
+      logger.error('Update availability error', error);
+      Alert.alert('Błąd', 'Nie udało się zaktualizować statusu.');
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
@@ -493,91 +516,53 @@ export default function ProfileScreen() {
             loading={uploading}
           />
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text variant="headlineSmall" style={styles.name}>{profile?.full_name}</Text>
-          {employerDetails?.is_verified && (
-            <MaterialCommunityIcons 
-              name="check-decagram" 
-              size={22} 
-              color={Colors.primary} 
-              style={{ marginLeft: 6 }} 
-            />
-          )}
-        </View>
-          {employerDetails?.is_verified && (
-            <MaterialCommunityIcons 
-              name="check-decagram" 
-              size={22} 
-              color={Colors.primary} 
-              style={{ marginLeft: 6 }} 
-            />
-          )}
-        </View>
-          {employerDetails?.is_verified && (
-            <MaterialCommunityIcons 
-              name="check-decagram" 
-              size={22} 
-              color={Colors.primary} 
-              style={{ marginLeft: 6 }} 
-            />
-          )}
-        </View>
-          {employerDetails?.is_verified && (
-            <MaterialCommunityIcons 
-              name="check-decagram" 
-              size={22} 
-              color={Colors.primary} 
-              style={{ marginLeft: 6 }} 
-            />
-          )}
-        </View>
-          {employerDetails?.is_verified && (
-            <MaterialCommunityIcons 
-              name="check-decagram" 
-              size={22} 
-              color={Colors.primary} 
-              style={{ marginLeft: 6 }} 
-            />
-          )}
-        </View>
-          {employerDetails?.is_verified && (
-            <MaterialCommunityIcons 
-              name="check-decagram" 
-              size={20} 
-              color={Colors.primary} 
-              style={{ marginLeft: 6 }} 
-            />
-          )}
-        </View>
+        <Text variant="headlineSmall" style={styles.name}>{profile?.full_name}</Text>
         {candidateDetails?.superpower && (
           <Chip style={styles.superpowerBadge} textStyle={styles.superpowerText}>{candidateDetails.superpower}</Chip>
         )}
         
-        <View style={styles.xpContainer}>
-          <View style={styles.xpTextRow}>
-            <Text variant="labelLarge" style={styles.xpLabel}>Poziom: Mid</Text>
-            <Text variant="labelMedium" style={styles.xpValue}>650 / 1000 XP</Text>
-          </View>
-          <ProgressBar progress={0.65} color={Colors.xpBar} style={styles.xpBar} />
+        {/* Nowa sekcja: Status Dostępności */}
+        <View style={styles.availabilityContainer}>
+          <TouchableOpacity 
+            style={[
+              styles.availabilityBadge, 
+              { backgroundColor: candidateDetails?.availability_status === 'Dostępny od zaraz' ? 'rgba(0, 200, 83, 0.1)' : 'rgba(255, 152, 0, 0.1)' }
+            ]}
+            onPress={() => setIsEditingAvailability(true)}
+          >
+            <MaterialCommunityIcons 
+              name="clock-check-outline" 
+              size={18} 
+              color={candidateDetails?.availability_status === 'Dostępny od zaraz' ? Colors.primary : '#FF9800'} 
+            />
+            <Text style={[
+              styles.availabilityText, 
+              { color: candidateDetails?.availability_status === 'Dostępny od zaraz' ? Colors.primary : '#FF9800' }
+            ]}>
+              {candidateDetails?.availability_status || 'Ustaw dostępność'}
+            </Text>
+            <MaterialCommunityIcons name="pencil" size={12} color={Colors.textLight} style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text variant="headlineMedium" style={styles.statValue}>12</Text>
-            <Text variant="labelSmall" style={styles.statLabel}>Matchy</Text>
-          </View>
-          <View style={[styles.statItem, styles.statDivider]}>
-            <Text variant="headlineMedium" style={styles.statValue}>48</Text>
-            <Text variant="labelSmall" style={styles.statLabel}>Wyświetleń</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text variant="headlineMedium" style={styles.statValue}>85%</Text>
-            <Text variant="labelSmall" style={styles.statLabel}>Dopasowania</Text>
+        {/* Nowa sekcja: Radar Skilli / Cech osobowości */}
+        <View style={styles.radarSection}>
+          <Text style={styles.radarTitle}>Profil zawodowy</Text>
+          <View style={styles.radarGrid}>
+            {(candidateDetails?.personality_traits || [
+              { label: 'Punktualność', value: 0.9 },
+              { label: 'Praca w zespole', value: 0.85 },
+              { label: 'Elastyczność', value: 0.7 },
+              { label: 'Komunikacja', value: 0.95 }
+            ]).map((trait, idx) => (
+              <View key={idx} style={styles.radarItem}>
+                <View style={styles.traitLabelRow}>
+                  <Text style={styles.traitLabel}>{trait.label}</Text>
+                  <Text style={styles.traitValue}>{Math.round(trait.value * 100)}%</Text>
+                </View>
+                <ProgressBar progress={trait.value} color={Colors.primary} style={styles.traitBar} />
+              </View>
+            ))}
           </View>
         </View>
       </View>
@@ -1003,7 +988,36 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      {/* Modal dodawania doświadczenia */}
+      {/* Modal edycji Dostępności */}
+      <Modal visible={isEditingAvailability} onDismiss={() => setIsEditingAvailability(false)} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text variant="headlineSmall" style={styles.modalTitle}>Kiedy możesz pracować?</Text>
+              <IconButton icon="close" onPress={() => setIsEditingAvailability(false)} />
+            </View>
+            <View style={styles.chipContainer}>
+              {['Dostępny od zaraz', 'Tylko weekendy', 'Wieczory', 'Elastycznie', 'Szukam stałej pracy'].map(status => (
+                <Chip 
+                  key={status}
+                  selected={candidateDetails?.availability_status === status}
+                  onPress={() => updateAvailability(status)}
+                  style={[
+                    styles.chip,
+                    candidateDetails?.availability_status === status && { backgroundColor: Colors.primary }
+                  ]}
+                  showSelectedCheck={false}
+                  selectedColor={candidateDetails?.availability_status === status ? '#fff' : Colors.text}
+                >
+                  {status}
+                </Chip>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal edycji doświadczenia */}
       <Modal visible={isEditingExp} onDismiss={() => setIsEditingExp(false)} transparent={true} animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -1205,6 +1219,65 @@ const styles = StyleSheet.create({
   addJobBtn: {
     borderRadius: 12,
   },
+  availabilityContainer: {
+    marginTop: 16,
+    width: '100%',
+    alignItems: 'center',
+  },
+  availabilityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+  },
+  availabilityText: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 14,
+  },
+  radarSection: {
+    width: '100%',
+    marginTop: 24,
+    padding: 20,
+    backgroundColor: Colors.background,
+    borderRadius: 24,
+  },
+  radarTitle: {
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 16,
+    color: Colors.text,
+    marginBottom: 16,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  radarGrid: {
+    gap: 16,
+  },
+  radarItem: {
+    width: '100%',
+  },
+  traitLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  traitLabel: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 13,
+    color: Colors.text,
+  },
+  traitValue: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 13,
+    color: Colors.primary,
+  },
+  traitBar: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
   jobsList: {
     paddingHorizontal: 20,
     gap: 12,
@@ -1274,10 +1347,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   logoutBtn: {
-    marginHorizontal: 16,
-    marginVertical: 12,
+    margin: 16,
     borderRadius: 12,
-    elevation: 4,
   },
   listSubheader: {
     fontFamily: 'Montserrat_700Bold',
