@@ -299,7 +299,7 @@ export default function SwipeScreen() {
       >
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)', 'rgba(0,0,0,0.95)']}
-          locations={[0, 0.4, 0.7, 0.9]}
+          locations={[0, 0.3, 0.6, 0.9]}
           style={styles.gradient}
         >
           {/* Top Badges */}
@@ -310,12 +310,10 @@ export default function SwipeScreen() {
                 <Text style={styles.matchTextModern}>{item.matchScore}% DOPASOWANIA</Text>
               </View>
             )}
-            {item.isVerified && (
-              <View style={styles.verifiedBadgeModern}>
-                <MaterialCommunityIcons name="check-decagram" size={14} color="#fff" />
-                <Text style={styles.verifiedTextModern}>ZWERYFIKOWANY</Text>
-              </View>
-            )}
+            <View style={styles.distanceBadgeModern}>
+              <MaterialCommunityIcons name="map-marker-distance" size={14} color="#fff" />
+              <Text style={styles.distanceTextModern}>W TWOJEJ OKOLICY</Text>
+            </View>
           </View>
           
           {item.isBlurred && (
@@ -332,7 +330,12 @@ export default function SwipeScreen() {
             <View style={styles.headerRowModern}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitleModern}>{item.title}</Text>
-                <Text style={styles.cardSubtitleModern}>{item.subtitle}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.cardSubtitleModern}>{item.subtitle}</Text>
+                  {item.isVerified && (
+                    <MaterialCommunityIcons name="check-decagram" size={16} color={Colors.primary} />
+                  )}
+                </View>
               </View>
               <View style={styles.priceContainerModern}>
                 <Text style={styles.priceLabelModern}>STAWKA</Text>
@@ -340,28 +343,34 @@ export default function SwipeScreen() {
               </View>
             </View>
 
-            {/* Description/Bio Snippet */}
-            {(item.description || item.bio) && (
-              <View style={styles.descriptionBoxModern}>
-                <Text style={styles.cardDescriptionModern} numberOfLines={2}>
-                  {item.description || item.bio}
-                </Text>
-              </View>
-            )}
+            {/* Middle Section: Bio/Experience */}
+            <View style={styles.middleSectionModern}>
+              {(item.description || item.bio) && (
+                <View style={styles.descriptionBoxModern}>
+                  <Text style={styles.cardDescriptionModern} numberOfLines={3}>
+                    {item.description || item.bio}
+                  </Text>
+                </View>
+              )}
 
-            {/* Tags / Skills */}
-            <View style={styles.tagRowModern}>
-              {item.tags.slice(0, 3).map((tag, i) => (
+              {item.type === 'candidate' && item.experienceHistory && item.experienceHistory.length > 0 && (
+                <View style={styles.experienceSnippetModern}>
+                  <Text style={styles.experienceLabelModern}>OSTATNIE DOŚWIADCZENIE:</Text>
+                  <Text style={styles.experienceValueModern} numberOfLines={1}>
+                    {item.experienceHistory[0].position} @ {item.experienceHistory[0].company}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Tags / Skills - Full Width Grid */}
+            <View style={styles.tagGridModern}>
+              {item.tags.map((tag, i) => (
                 <View key={i} style={styles.tagModern}>
                   <MaterialCommunityIcons name={tag.icon as any} size={14} color={Colors.primary} />
                   <Text style={styles.tagTextModern}>{tag.text}</Text>
                 </View>
               ))}
-              {item.tags.length > 3 && (
-                <View style={styles.tagMoreModern}>
-                  <Text style={styles.tagMoreTextModern}>+{item.tags.length - 3}</Text>
-                </View>
-              )}
             </View>
           </View>
         </LinearGradient>
@@ -561,6 +570,23 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1,
   },
+  distanceBadgeModern: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    gap: 4,
+  },
+  distanceTextModern: {
+    color: '#fff',
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 10,
+    letterSpacing: 1,
+  },
   lockContainerModern: {
     position: 'absolute',
     top: '30%',
@@ -629,12 +655,34 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_800ExtraBold',
     fontSize: 15,
   },
+  middleSectionModern: {
+    gap: 12,
+  },
   descriptionBoxModern: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     padding: 12,
     borderRadius: 12,
     borderLeftWidth: 3,
     borderLeftColor: Colors.primary,
+  },
+  experienceSnippetModern: {
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  experienceLabelModern: {
+    fontSize: 10,
+    fontFamily: 'Montserrat_700Bold',
+    color: Colors.primary,
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  experienceValueModern: {
+    color: '#fff',
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 14,
   },
   cardDescriptionModern: {
     fontFamily: 'Montserrat_400Regular',
@@ -647,6 +695,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  tagGridModern: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 5,
   },
   tagModern: {
     flexDirection: 'row',
