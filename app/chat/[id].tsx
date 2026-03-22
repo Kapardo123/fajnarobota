@@ -188,12 +188,12 @@ export default function ChatScreen() {
         if (data) {
           setMessages(prev => prev.map(m => m.id === tempId ? { ...data, is_me: true } : m));
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error sending message:', error);
         // Remove optimistic message on error
         setMessages(prev => prev.filter(m => m.id !== tempId));
         setInputText(text);
-        Alert.alert('Błąd', 'Nie udało się wysłać wiadomości. Sprawdź połączenie z internetem.');
+        Alert.alert('Błąd wysyłania', error.message || 'Nie udało się wysłać wiadomości.');
       }
     }
   };
