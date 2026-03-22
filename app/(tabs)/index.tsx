@@ -455,6 +455,18 @@ export default function SwipeScreen() {
     };
   };
 
+  const likeOpacity = position.x.interpolate({
+    inputRange: [0, SCREEN_WIDTH / 4],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  const dislikeOpacity = position.x.interpolate({
+    inputRange: [-SCREEN_WIDTH / 4, 0],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
   const frontInterpolate = flipAnimation.interpolate({
     inputRange: [0, 180],
     outputRange: ['0deg', '180deg'],
@@ -496,25 +508,33 @@ export default function SwipeScreen() {
                 style={styles.gradient}
               >
                 {/* TOP SECTION */}
-                <View style={styles.topBadgesRow}>
-                  <View style={styles.matchBadgeModern}>
-                    <MaterialCommunityIcons name="map-marker" size={14} color={Colors.primary} />
-                    <Text style={styles.matchTextModern}>
-                      {item.locationName?.split(',')[0].toUpperCase() || 'LOKALIZACJA'}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.distanceBadgeModern}>
-                    <MaterialCommunityIcons name="map-marker-distance" size={14} color="#fff" />
-                    <Text style={styles.distanceTextModern}>
-                      {userProfile?.lat && userProfile?.lng && item.lat && item.lng 
-                        ? `${calculateDistance(userProfile.lat, userProfile.lng, item.lat, item.lng)} KM STĄD` 
-                        : 'W TWOJEJ OKOLICY'}
-                    </Text>
-                  </View>
+              <View style={styles.topBadgesRow}>
+                <View style={styles.matchBadgeModern}>
+                  <MaterialCommunityIcons name="map-marker" size={14} color={Colors.primary} />
+                  <Text style={styles.matchTextModern}>
+                    {item.locationName?.split(',')[0].toUpperCase() || 'LOKALIZACJA'}
+                  </Text>
                 </View>
                 
-                {/* MIDDLE SECTION */}
+                <View style={styles.distanceBadgeModern}>
+                  <MaterialCommunityIcons name="map-marker-distance" size={14} color="#fff" />
+                  <Text style={styles.distanceTextModern}>
+                    {userProfile?.lat && userProfile?.lng && item.lat && item.lng 
+                      ? `${calculateDistance(userProfile.lat, userProfile.lng, item.lat, item.lng)} KM STĄD` 
+                      : 'W TWOJEJ OKOLICY'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* SWIPE OVERLAYS */}
+              <Animated.View style={[styles.swipeOverlay, styles.likeOverlay, { opacity: likeOpacity }]}>
+                <Text style={styles.swipeOverlayText}>TAK</Text>
+              </Animated.View>
+              <Animated.View style={[styles.swipeOverlay, styles.dislikeOverlay, { opacity: dislikeOpacity }]}>
+                <Text style={styles.swipeOverlayText}>NIE</Text>
+              </Animated.View>
+              
+              {/* MIDDLE SECTION */}
                 <View style={styles.middleContainerModern}>
                   {item.isBlurred ? (
                     <View style={styles.lockContainerModern}>
@@ -920,20 +940,22 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     flex: 1,
-    padding: 16,
-    paddingTop: 80, // Dalsze obniżenie pod logo
+    padding: 12,
+    paddingTop: 10, // Mniejszy padding od góry, logo jest wyżej
     justifyContent: 'center',
+    alignItems: 'center',
   },
   cardWrapper: {
     width: '100%',
-    height: SCREEN_HEIGHT * 0.76, // Kolejna korekta dla zachowania miejsca na stopkę
+    height: '100%',
+    maxWidth: 500, // Ograniczenie dla tabletów/web
   },
   card: {
     flex: 1,
-    borderRadius: 24,
+    borderRadius: 28,
     overflow: 'hidden',
     elevation: 8,
-    backgroundColor: '#000', // Czysta czerń zamiast szarego
+    backgroundColor: '#000',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -1248,21 +1270,53 @@ const styles = StyleSheet.create({
     margin: 20,
     borderRadius: 12,
   },
+  swipeOverlay: {
+    position: 'absolute',
+    top: 100,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 4,
+    zIndex: 100,
+  },
+  likeOverlay: {
+    left: 40,
+    borderColor: Colors.primary,
+    transform: [{ rotate: '-20deg' }],
+  },
+  dislikeOverlay: {
+    right: 40,
+    borderColor: Colors.error,
+    transform: [{ rotate: '20deg' }],
+  },
+  swipeOverlayText: {
+    fontSize: 32,
+    fontFamily: 'Montserrat_900Black',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    color: '#fff',
+  },
   tagMoreTextModern: {
     color: Colors.primary,
     fontFamily: 'Montserrat_700Bold',
     fontSize: 12,
   },
-  actionBtn: {
-    elevation: 4,
-    margin: 0,
-  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 20,
-    paddingBottom: 40,
+    gap: 30, // Większy odstęp między przyciskami
+    paddingBottom: 25,
+    paddingTop: 10,
+    backgroundColor: 'transparent',
+  },
+  actionBtn: {
+    elevation: 6,
+    margin: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   emptyState: {
     alignItems: 'center',
