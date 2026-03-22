@@ -60,18 +60,18 @@ export default function RootLayout() {
       console.log('Auth Event Global:', event, session ? 'User logged in' : 'User logged out');
       
       const inTabsGroup = segments[0] === '(tabs)';
+      const inChat = segments[0] === 'chat';
       
-      // Jeśli użytkownik jest wylogowany (SIGNED_OUT) lub brak sesji w tabsach
-      if (event === 'SIGNED_OUT' || (!session && inTabsGroup)) {
-        console.log('Auth: Forcing hard reset to hero...');
-        // To jest najbardziej radykalne - czyścimy wszystko i rzucamy na start
+      // Jeśli użytkownik jest wylogowany (SIGNED_OUT)
+      if (event === 'SIGNED_OUT') {
+        console.log('Auth: User logged out, redirecting to hero...');
         router.replace('/');
         return;
       }
 
-      // Jeśli sesja się pojawiła (SIGNED_IN), a nie jesteśmy w tabsach
-      if (event === 'SIGNED_IN' && session && !inTabsGroup) {
-        console.log('Auth: User logged in, redirecting to tabs...');
+      // INITIAL_SESSION i inne eventy - nie przekierowuj jeśli jesteśmy w tabsach lub czacie
+      if (session && !inTabsGroup && !inChat) {
+        console.log('Auth: User has session, but not in protected area, redirecting to tabs...');
         router.replace('/(tabs)');
       }
     });
