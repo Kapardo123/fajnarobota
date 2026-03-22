@@ -621,9 +621,10 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   middleContainerModern: {
-    flex: 2, // Jeszcze więcej miejsca na środek, aby wypchnąć dół niżej
+    flex: 2,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 20, // Dodano lekki padding od górnych plakietek
   },
   priceCenterContainer: {
     alignItems: 'center',
