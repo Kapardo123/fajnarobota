@@ -24,41 +24,34 @@ export default function MatchModal({
   targetAvatar, 
   targetName 
 }: MatchModalProps) {
-  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
-  const leftAvatarAnim = useRef(new Animated.Value(-100)).current;
-  const rightAvatarAnim = useRef(new Animated.Value(100)).current;
+  const contentTranslateY = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     if (visible) {
       Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: 1,
-          tension: 50,
+          tension: 20,
           friction: 7,
           useNativeDriver: true,
         }),
         Animated.timing(opacityAnim, {
           toValue: 1,
-          duration: 400,
+          duration: 600,
           useNativeDriver: true,
         }),
-        Animated.spring(leftAvatarAnim, {
+        Animated.timing(contentTranslateY, {
           toValue: 0,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.spring(rightAvatarAnim, {
-          toValue: 0,
-          tension: 40,
+          duration: 600,
           useNativeDriver: true,
         }),
       ]).start();
     } else {
-      scaleAnim.setValue(0);
+      scaleAnim.setValue(0.9);
       opacityAnim.setValue(0);
-      leftAvatarAnim.setValue(-100);
-      rightAvatarAnim.setValue(100);
+      contentTranslateY.setValue(20);
     }
   }, [visible]);
 
@@ -69,49 +62,87 @@ export default function MatchModal({
         onDismiss={onHide} 
         contentContainerStyle={styles.modalContainer}
       >
-        <LinearGradient
-          colors={[Colors.primary, '#00C853', '#1B5E20']}
-          style={styles.gradient}
-        >
-          <Animated.View style={[styles.content, { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }]}>
-            <MaterialCommunityIcons name="heart-flash" size={80} color="#fff" style={styles.mainIcon} />
-            
-            <Text style={styles.title}>TO JEST MATCH!</Text>
-            <Text style={styles.subtitle}>Ty i {targetName} polubiliście się nawzajem!</Text>
+        <View style={styles.overlay}>
+          <Animated.View 
+            style={[
+              styles.card, 
+              { 
+                opacity: opacityAnim, 
+                transform: [
+                  { scale: scaleAnim },
+                  { translateY: contentTranslateY }
+                ] 
+              }
+            ]}
+          >
+            <View style={styles.topBar}>
+              <MaterialCommunityIcons name="briefcase-check" size={24} color={Colors.primary} />
+              <Text style={styles.topBarText}>NOWA WSPÓŁPRACA</Text>
+            </View>
 
-            <View style={styles.avatarsContainer}>
-              <Animated.View style={[styles.avatarWrapper, { transform: [{ translateX: leftAvatarAnim }] }]}>
-                <Image source={{ uri: userAvatar }} style={styles.avatar} />
-              </Animated.View>
-              
-              <View style={styles.heartWrapper}>
-                <MaterialCommunityIcons name="heart" size={40} color="#fff" />
+            <View style={styles.content}>
+              <Text style={styles.title}>Mamy dopasowanie!</Text>
+              <Text style={styles.subtitle}>
+                Twoje profile z <Text style={styles.targetNameHighlight}>{targetName}</Text> wykazują wysoki poziom wzajemnego zainteresowania.
+              </Text>
+
+              <View style={styles.comparisonContainer}>
+                <View style={styles.avatarContainer}>
+                  <View style={styles.avatarWrapper}>
+                    <Image source={{ uri: userAvatar }} style={styles.avatar} />
+                  </View>
+                  <Text style={styles.avatarLabel}>Ty</Text>
+                </View>
+
+                <View style={styles.connectionLine}>
+                  <View style={styles.dot} />
+                  <View style={styles.line} />
+                  <MaterialCommunityIcons name="handshake" size={32} color={Colors.primary} />
+                  <View style={styles.line} />
+                  <View style={styles.dot} />
+                </View>
+
+                <View style={styles.avatarContainer}>
+                  <View style={styles.avatarWrapper}>
+                    <Image source={{ uri: targetAvatar }} style={styles.avatar} />
+                  </View>
+                  <Text style={styles.avatarLabel}>{targetName}</Text>
+                </View>
               </View>
 
-              <Animated.View style={[styles.avatarWrapper, { transform: [{ translateX: rightAvatarAnim }] }]}>
-                <Image source={{ uri: targetAvatar }} style={styles.avatar} />
-              </Animated.View>
-            </View>
+              <View style={styles.infoBox}>
+                <MaterialCommunityIcons name="information-outline" size={20} color={Colors.textLight} />
+                <Text style={styles.infoText}>
+                  Możecie teraz nawiązać kontakt bezpośredni, aby omówić szczegóły współpracy.
+                </Text>
+              </View>
 
-            <View style={styles.actions}>
-              <Button 
-                mode="contained" 
-                onPress={onSendMessage}
-                style={styles.primaryBtn}
-                contentStyle={styles.btnContent}
-                labelStyle={styles.btnLabel}
-                buttonColor="#fff"
-                textColor={Colors.primary}
-              >
-                Napisz wiadomość
-              </Button>
-              
-              <TouchableOpacity onPress={onHide} style={styles.secondaryBtn}>
-                <Text style={styles.secondaryBtnText}>Szukaj dalej</Text>
-              </TouchableOpacity>
+              <View style={styles.actions}>
+                <Button 
+                  mode="contained" 
+                  onPress={onSendMessage}
+                  style={styles.primaryBtn}
+                  contentStyle={styles.btnContent}
+                  labelStyle={styles.btnLabel}
+                  buttonColor={Colors.primary}
+                >
+                  Rozpocznij konwersację
+                </Button>
+                
+                <Button 
+                  mode="outlined" 
+                  onPress={onHide}
+                  style={styles.secondaryBtn}
+                  contentStyle={styles.btnContent}
+                  labelStyle={styles.secondaryBtnLabel}
+                  textColor={Colors.textLight}
+                >
+                  Wróć do przeglądania
+                </Button>
+              </View>
             </View>
           </Animated.View>
-        </LinearGradient>
+        </View>
       </Modal>
     </Portal>
   );
@@ -121,100 +152,155 @@ const styles = StyleSheet.create({
   modalContainer: {
     margin: 0,
     flex: 1,
-  },
-  gradient: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  content: {
-    width: '100%',
+  overlay: {
+    width: width,
+    height: height,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 30,
+    padding: 20,
   },
-  mainIcon: {
-    marginBottom: 20,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 10,
+  card: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: Colors.surface,
+    borderRadius: 24,
+    overflow: 'hidden',
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
   },
-  title: {
-    fontSize: 42,
-    fontFamily: 'Montserrat_900Black',
-    color: '#fff',
-    textAlign: 'center',
-    letterSpacing: 2,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 5,
-  },
-  subtitle: {
-    fontSize: 18,
-    fontFamily: 'Montserrat_400Regular',
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    marginTop: 10,
-    marginBottom: 50,
-  },
-  avatarsContainer: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 60,
+    backgroundColor: 'rgba(0, 200, 83, 0.08)',
+    paddingVertical: 12,
+    gap: 8,
+  },
+  topBarText: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 12,
+    color: Colors.primary,
+    letterSpacing: 1.5,
+  },
+  content: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontFamily: 'Montserrat_900Black',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontFamily: 'Montserrat_400Regular',
+    color: Colors.textLight,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+    paddingHorizontal: 10,
+  },
+  targetNameHighlight: {
+    fontFamily: 'Montserrat_700Bold',
+    color: Colors.text,
+  },
+  comparisonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 32,
+    paddingHorizontal: 10,
+  },
+  avatarContainer: {
+    alignItems: 'center',
+    gap: 8,
   },
   avatarWrapper: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 4,
-    borderColor: '#fff',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    borderColor: Colors.primary,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    backgroundColor: Colors.background,
   },
   avatar: {
     width: '100%',
     height: '100%',
   },
-  heartWrapper: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
+  avatarLabel: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 12,
+    color: Colors.text,
+  },
+  connectionLine: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 10,
-    marginHorizontal: -20,
-    borderWidth: 4,
-    borderColor: '#fff',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  line: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.border,
+    marginHorizontal: 5,
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+  },
+  infoBox: {
+    flexDirection: 'row',
+    backgroundColor: Colors.background,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 32,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: 'Montserrat_400Regular',
+    color: Colors.textLight,
+    lineHeight: 18,
   },
   actions: {
     width: '100%',
-    gap: 20,
+    gap: 12,
   },
   primaryBtn: {
-    borderRadius: 20,
-    elevation: 5,
-  },
-  btnContent: {
-    paddingVertical: 12,
-  },
-  btnLabel: {
-    fontSize: 18,
-    fontFamily: 'Montserrat_700Bold',
+    borderRadius: 14,
+    elevation: 0,
   },
   secondaryBtn: {
-    paddingVertical: 10,
-    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
   },
-  secondaryBtnText: {
-    color: '#fff',
+  btnContent: {
+    paddingVertical: 10,
+  },
+  btnLabel: {
     fontSize: 16,
     fontFamily: 'Montserrat_700Bold',
-    textDecorationLine: 'underline',
+    color: '#fff',
+  },
+  secondaryBtnLabel: {
+    fontSize: 15,
+    fontFamily: 'Montserrat_700Bold',
   },
 });
