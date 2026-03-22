@@ -173,6 +173,7 @@ export default function SwipeScreen() {
 
         const { data: candidates } = await query;
         
+        if (candidates) {
           const candidateCards: CardData[] = candidates.map(cand => {
             const fullName = cand.profiles?.full_name || 'Kandydat';
             const age = cand.age ? `, ${cand.age}` : '';
@@ -375,7 +376,7 @@ export default function SwipeScreen() {
             <View style={styles.distanceBadgeModern}>
               <MaterialCommunityIcons name="map-marker-distance" size={14} color="#fff" />
               <Text style={styles.distanceTextModern}>
-                {userProfile?.lat && item.lat 
+                {userProfile?.lat && userProfile?.lng && item.lat && item.lng 
                   ? `${calculateDistance(userProfile.lat, userProfile.lng, item.lat, item.lng)} KM STĄD` 
                   : 'W TWOJEJ OKOLICY'}
               </Text>
