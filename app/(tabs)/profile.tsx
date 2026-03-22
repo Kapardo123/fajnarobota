@@ -188,34 +188,52 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    logger.action('Wyloguj');
+    // 1. Zawsze logujemy do konsoli systemowej - najpewniejsze
+    console.log('--- LOGOUT CLICKED ---');
+    
+    // 2. Logger akcji
+    try {
+      logger.action('Wyloguj');
+    } catch (e) {
+      console.warn('Logger failed, but continuing logout', e);
+    }
+
+    // 3. Bezpieczny Alert
     Alert.alert(
       'Wyloguj się',
-      'Czy na pewno chcesz się wylogować?',
+      'Czy na pewno chcesz wyjść z konta?',
       [
-        { text: 'Anuluj', style: 'cancel' },
+        { text: 'Zostań', style: 'cancel' },
         { 
-          text: 'Wyloguj', 
+          text: 'Tak, Wyloguj', 
           style: 'destructive',
           onPress: async () => {
+            console.log('--- PERFORMING LOGOUT ---');
             try {
-              // 1. Wyloguj w Supabase (nie czekamy, żeby nie blokować UI)
-              supabase.auth.signOut();
+              // A. Supabase - nie czekamy na wynik, żeby nie wisiało
+              supabase.auth.signOut().catch(e => console.error('SignOut error:', e));
               
-              // 2. Czyścimy stan lokalny
+              // B. Czyścimy stan lokalny (opcjonalnie, bo i tak robimy replace)
               setProfile(null);
               setCandidateDetails(null);
               setEmployerDetails(null);
               
-              // 3. Natychmiastowe przekierowanie
+              // C. Przekierowanie - najważniejsze
+              console.log('--- REDIRECTING ---');
               router.replace('/');
+              
+              // D. Fallback po 500ms jeśli replace by nie zadziałało
+              setTimeout(() => {
+                router.push('/');
+              }, 500);
             } catch (error: any) {
-              logger.error('Logout error', error);
+              console.error('Fatal logout error:', error);
               router.replace('/');
             }
           }
         },
-      ]
+      ],
+      { cancelable: true }
     );
   };
 
@@ -479,21 +497,20 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <Divider />
         <List.Section>
-          <List.Subheader style={styles.listSubheader}>Aplikacja</List.Subheader>
+          <List.Subheader style={styles.listSubheader}>Ustawienia</List.Subheader>
+          <Button 
+            mode="contained" 
+            onPress={handleLogout}
+            buttonColor={Colors.error}
+            style={styles.logoutBtn}
+            icon="logout"
+          >
+            Wyloguj się
+          </Button>
           <List.Item
             title="Pomoc i Wsparcie"
             left={props => <List.Icon {...props} icon="help-circle" color={Colors.primary} />}
           />
-          <TouchableOpacity 
-            style={styles.logoutItem} 
-            onPress={handleLogout}
-            activeOpacity={0.7}
-          >
-            <View style={styles.logoutItemContent}>
-              <MaterialCommunityIcons name="logout" size={24} color={Colors.error} style={styles.logoutIcon} />
-              <Text style={styles.logoutText}>Wyloguj się</Text>
-            </View>
-          </TouchableOpacity>
         </List.Section>
       </View>
 
@@ -808,21 +825,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_400Regular',
     padding: 20,
   },
-  logoutItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  logoutItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logoutIcon: {
-    marginRight: 16,
-  },
-  logoutText: {
-    color: Colors.error,
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 16,
+  logoutBtn: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+    borderRadius: 12,
+    elevation: 4,
   },
   listSubheader: {
     fontFamily: 'Montserrat_700Bold',
