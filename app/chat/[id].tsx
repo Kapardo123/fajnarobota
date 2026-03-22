@@ -33,11 +33,13 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
+    if (!id || !userId) return;
+
     initChat();
     
-    // Subskrypcja na nowe wiadomości
+    // Subskrypcja na nowe wiadomości - uproszczona dla lepszej niezawodności
     const subscription = supabase
-      .channel(`chat:${id}`)
+      .channel(`chat_${id}`)
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
@@ -45,8 +47,9 @@ export default function ChatScreen() {
         filter: `match_id=eq.${id}`
       }, (payload) => {
         const newMessage = payload.new as any;
+        console.log('New message received via realtime:', newMessage);
+        
         setMessages(prev => {
-          // Unikaj duplikowania wiadomości wysłanych przez siebie (które już są w stanie)
           if (prev.some(m => m.id === newMessage.id)) return prev;
           return [...prev, {
             ...newMessage,
@@ -54,7 +57,9 @@ export default function ChatScreen() {
           }];
         });
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(subscription);
@@ -90,22 +95,45 @@ export default function ChatScreen() {
   const sendMessage = async () => {
     if (inputText.trim() && userId) {
       const text = inputText.trim();
+      const tempId = Date.now().toString();
+      
+      // Optymistyczna aktualizacja UI
+      const optimisticMessage: Message = {
+        id: tempId,
+        match_id: id as string,
+        sender_id: userId,
+        content: text,
+        type: 'text',
+        created_at: new Date().toISOString(),
+        is_me: true
+      };
+      
+      setMessages(prev => [...prev, optimisticMessage]);
       setInputText('');
       
       try {
-        const { error } = await supabase
+        const { error, data } = await supabase
           .from('messages')
           .insert({
             match_id: id,
             sender_id: userId,
             content: text,
             type: 'text'
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+        
+        // Zastąp wiadomość optymistyczną tą z bazy (aby mieć poprawne ID i timestamp)
+        if (data) {
+          setMessages(prev => prev.map(m => m.id === tempId ? { ...data, is_me: true } : m));
+        }
       } catch (error) {
         console.error('Error sending message:', error);
-        setInputText(text); // Przywróć tekst w razie błędu
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+        setInputText(text);
+        Alert.alert('Błąd', 'Nie udało się wysłać wiadomości.');
       }
     }
   };
@@ -120,8 +148,8 @@ export default function ChatScreen() {
       if (result.canceled) return;
 
       const file = result.assets[0];
-      if (file.size && file.size > 5 * 1024 * 1024) {
-        Alert.alert('Błąd', 'Plik jest za duży. Maksymalny rozmiar to 5MB.');
+      if (file.size && file.size > 10 * 1024 * 1024) { // Zwiększamy do 10MB
+        Alert.alert('Błąd', 'Plik jest za duży. Maksymalny rozmiar to 10MB.');
         return;
       }
 
@@ -140,12 +168,30 @@ export default function ChatScreen() {
       const fileName = `${userId}_${Date.now()}.${fileExt}`;
       const filePath = `cv/${fileName}`;
 
-      const response = await fetch(file.uri);
-      const blob = await response.blob();
+      // Konwersja pliku na format akceptowany przez Supabase (Blob)
+      let blob;
+      if (Platform.OS === 'web') {
+        const response = await fetch(file.uri);
+        blob = await response.blob();
+      } else {
+        const base64 = await FileSystem.readAsStringAsync(file.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        blob = new Blob([byteArray], { type: 'application/pdf' });
+      }
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('cv_files')
-        .upload(filePath, blob);
+        .upload(filePath, blob, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
 
       if (uploadError) throw uploadError;
 
@@ -165,9 +211,9 @@ export default function ChatScreen() {
 
       if (messageError) throw messageError;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading file:', error);
-      Alert.alert('Błąd', 'Nie udało się wysłać pliku.');
+      Alert.alert('Błąd wysyłania', error.message || 'Nie udało się wysłać pliku.');
     } finally {
       setUploading(false);
     }
