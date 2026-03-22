@@ -32,6 +32,7 @@ export default function RegisterScreen() {
     name: '',
     age: '',
     skills: [] as string[],
+    languages: [] as { name: string; level: string }[],
     salary: '',
     superpower: '',
     experience: 'Junior',
@@ -89,9 +90,12 @@ export default function RegisterScreen() {
     {
       title: 'Inne',
       icon: 'dots-horizontal',
-      skills: ['Student', 'Uczeń', 'Angielski B2', 'Angielski C1', 'Social Media', 'Opieka nad dziećmi']
+      skills: ['Student', 'Uczeń', 'Social Media', 'Opieka nad dziećmi', 'Obsługa komputera']
     }
   ];
+
+  const LANGUAGES = ['Angielski', 'Niemiecki', 'Ukraiński', 'Rosyjski', 'Francuski', 'Hiszpański', 'Włoski'];
+  const LANGUAGE_LEVELS = ['A1 (Podstawowy)', 'A2 (Podstawowy+)', 'B1 (Średni)', 'B2 (Średni wyższy)', 'C1 (Zaawansowany)', 'C2 (Native)'];
 
   const SUPERPOWERS = [
     '#OgarniamChaos', 
@@ -103,7 +107,13 @@ export default function RegisterScreen() {
     '#KreatywnaGłowa',
     '#ZawszeZorganizowany',
     '#SiłaSpokoju',
-    '#TechnicznyMózg'
+    '#TechnicznyMózg',
+    '#SzybkaNauka',
+    '#Samodzielność',
+    '#WysokaKultura',
+    '#PunktualnośćMójPriorytet',
+    '#MistrzKomunikacji',
+    '#EnergiaIDziałanie'
   ];
 
   const pickImage = async () => {
@@ -199,6 +209,7 @@ export default function RegisterScreen() {
             blind_hiring: candidateData.blindHiring,
             bio: candidateData.bio,
             experience_history: candidateData.experienceHistory,
+            languages: candidateData.languages,
           });
         if (candidateError) throw candidateError;
       } else {
@@ -306,6 +317,31 @@ export default function RegisterScreen() {
       setCandidateData({
         ...candidateData,
         skills: [...candidateData.skills, skill]
+      });
+    }
+  };
+
+  const toggleLanguage = (lang: string, level: string) => {
+    const exists = candidateData.languages.find(l => l.name === lang);
+    if (exists) {
+      if (exists.level === level) {
+        // Usuń jeśli ten sam poziom
+        setCandidateData({
+          ...candidateData,
+          languages: candidateData.languages.filter(l => l.name !== lang)
+        });
+      } else {
+        // Zaktualizuj poziom
+        setCandidateData({
+          ...candidateData,
+          languages: candidateData.languages.map(l => l.name === lang ? { ...l, level } : l)
+        });
+      }
+    } else {
+      // Dodaj nowy
+      setCandidateData({
+        ...candidateData,
+        languages: [...candidateData.languages, { name: lang, level }]
       });
     }
   };
@@ -630,6 +666,39 @@ export default function RegisterScreen() {
             </View>
 
             <View style={{ marginTop: 8 }}>
+              <Text style={styles.sectionLabel}>Języki obce</Text>
+              <Text style={styles.helperText}>Wybierz język, a następnie określ jego poziom.</Text>
+              {LANGUAGES.map(lang => (
+                <View key={lang} style={styles.languageRow}>
+                  <Text style={styles.languageName}>{lang}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.levelContainer}>
+                    {LANGUAGE_LEVELS.map(level => {
+                      const isSelected = candidateData.languages.find(l => l.name === lang && l.level === level);
+                      return (
+                        <Chip
+                          key={level}
+                          selected={!!isSelected}
+                          onPress={() => toggleLanguage(lang, level)}
+                          style={[
+                            styles.levelChip,
+                            isSelected && { backgroundColor: Colors.primary }
+                          ]}
+                          textStyle={[
+                            styles.levelChipText,
+                            isSelected && { color: '#fff' }
+                          ]}
+                          showSelectedCheck={false}
+                        >
+                          {level.split(' ')[0]}
+                        </Chip>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              ))}
+            </View>
+
+            <View style={{ marginTop: 24 }}>
               <Text style={styles.sectionLabel}>Supermoc</Text>
               <View style={styles.chipContainer}>
                 {SUPERPOWERS.map(power => (
@@ -972,6 +1041,27 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_700Bold',
     color: Colors.text,
     marginBottom: 16,
+  },
+  languageRow: {
+    marginBottom: 12,
+  },
+  languageName: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 14,
+    marginBottom: 6,
+    color: Colors.text,
+  },
+  levelContainer: {
+    gap: 8,
+    paddingRight: 20,
+  },
+  levelChip: {
+    borderRadius: 8,
+    backgroundColor: Colors.background,
+  },
+  levelChipText: {
+    fontSize: 11,
+    fontFamily: 'Montserrat_600SemiBold',
   },
   privacyCard: {
     flexDirection: 'row',

@@ -37,6 +37,7 @@ interface CandidateDetails {
   age: number;
   salary_expectation: string;
   skills: string[];
+  languages?: { name: string; level: string }[];
   superpower: string;
   blind_hiring: boolean;
   bio?: string;
@@ -686,6 +687,11 @@ export default function ProfileScreen() {
               setNewSkills(candidateDetails?.skills?.join(', ') || '');
               setIsEditingSkills(true);
             }}
+          />
+          <List.Item
+            title="Języki obce"
+            description={candidateDetails?.languages?.map(l => `${l.name} (${l.level.split(' ')[0]})`).join(', ') || 'Nie dodano języków'}
+            left={props => <List.Icon {...props} icon="translate" color={Colors.primary} />}
           />
           <List.Item
             title="Oczekiwania finansowe"
