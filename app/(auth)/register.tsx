@@ -60,8 +60,51 @@ export default function RegisterScreen() {
     lng: 0,
   });
 
-  const SKILLS_LIST = ['Gastronomia', 'Barista', 'Sprzedawca', 'Obsługa klienta', 'Magazynier', 'Student', 'Angielski B2', 'Kierowca'];
-  const SUPERPOWERS = ['#OgarniamChaos', '#NigdyNieSpóźniony', '#MistrzExcela', '#UśmiechNaTwarzy', '#SzybkiJakBłyskawica'];
+  const SKILLS_CATEGORIES = [
+    {
+      title: 'Prawo jazdy',
+      icon: 'car',
+      skills: ['Kat. AM', 'Kat. A1', 'Kat. A2', 'Kat. A', 'Kat. B', 'Kat. B+E', 'Kat. C', 'Kat. C+E', 'Kat. D']
+    },
+    {
+      title: 'Gastronomia & Eventy',
+      icon: 'silverware-variant',
+      skills: ['Kelner', 'Kucharz', 'Pomoc kuchenna', 'Barman', 'Barista', 'Hostessa', 'Zmywak', 'Sanepid']
+    },
+    {
+      title: 'Handel & Obsługa',
+      icon: 'cart-outline',
+      skills: ['Sprzedawca', 'Kasjer', 'Obsługa klienta', 'Promotor', 'Merchandiser']
+    },
+    {
+      title: 'Logistyka & Produkcja',
+      icon: 'package-variant-closed',
+      skills: ['Magazynier', 'Pakowacz', 'Wózki widłowe', 'Kurier', 'Dostawca jedzenia', 'Produkcja']
+    },
+    {
+      title: 'Prace Fizyczne & Techniczne',
+      icon: 'tools',
+      skills: ['Budowa', 'Remonty', 'Sprzątanie', 'Ochrona', 'Złota rączka', 'Ogrodnik']
+    },
+    {
+      title: 'Inne',
+      icon: 'dots-horizontal',
+      skills: ['Student', 'Uczeń', 'Angielski B2', 'Angielski C1', 'Social Media', 'Opieka nad dziećmi']
+    }
+  ];
+
+  const SUPERPOWERS = [
+    '#OgarniamChaos', 
+    '#NigdyNieSpóźniony', 
+    '#MistrzExcela', 
+    '#UśmiechNaTwarzy', 
+    '#SzybkiJakBłyskawica',
+    '#TeamPlayer',
+    '#KreatywnaGłowa',
+    '#ZawszeZorganizowany',
+    '#SiłaSpokoju',
+    '#TechnicznyMózg'
+  ];
 
   const pickImage = async () => {
     try {
@@ -259,7 +302,7 @@ export default function RegisterScreen() {
         ...candidateData,
         skills: candidateData.skills.filter(s => s !== skill)
       });
-    } else if (candidateData.skills.length < 5) {
+    } else if (candidateData.skills.length < 8) {
       setCandidateData({
         ...candidateData,
         skills: [...candidateData.skills, skill]
@@ -552,33 +595,41 @@ export default function RegisterScreen() {
         return role === 'candidate' ? (
           <View style={styles.stepContent}>
             <Text style={styles.stepTitle}>Twoje umiejętności</Text>
-            <Text style={styles.stepSubtitle}>Wybierz do 5 najważniejszych skilli i swoją supermoc.</Text>
+            <Text style={styles.stepSubtitle}>Wybierz najważniejsze umiejętności (max. 8) i swoją supermoc.</Text>
 
             <View>
-              <View style={styles.chipContainer}>
-                {SKILLS_LIST.map(skill => (
-                  <Chip 
-                    key={skill}
-                    selected={candidateData.skills.includes(skill)}
-                    onPress={() => {
-                      toggleSkill(skill);
-                      if (errors.skills) setErrors({...errors, skills: undefined});
-                    }}
-                    style={[
-                      styles.chip,
-                      candidateData.skills.includes(skill) && { backgroundColor: Colors.primary }
-                    ]}
-                    showSelectedCheck={false}
-                    selectedColor={candidateData.skills.includes(skill) ? '#fff' : Colors.text}
-                  >
-                    {skill}
-                  </Chip>
-                ))}
-              </View>
+              {SKILLS_CATEGORIES.map((category, idx) => (
+                <View key={idx} style={{ marginBottom: 24 }}>
+                  <View style={styles.categoryHeader}>
+                    <MaterialCommunityIcons name={category.icon as any} size={20} color={Colors.primary} />
+                    <Text style={styles.categoryTitle}>{category.title}</Text>
+                  </View>
+                  <View style={styles.chipContainer}>
+                    {category.skills.map(skill => (
+                      <Chip 
+                        key={skill}
+                        selected={candidateData.skills.includes(skill)}
+                        onPress={() => {
+                          toggleSkill(skill);
+                          if (errors.skills) setErrors({...errors, skills: undefined});
+                        }}
+                        style={[
+                          styles.chip,
+                          candidateData.skills.includes(skill) && { backgroundColor: Colors.primary }
+                        ]}
+                        showSelectedCheck={false}
+                        selectedColor={candidateData.skills.includes(skill) ? '#fff' : Colors.text}
+                      >
+                        {skill}
+                      </Chip>
+                    ))}
+                  </View>
+                </View>
+              ))}
               {errors.skills && <Text style={styles.errorText}>{errors.skills}</Text>}
             </View>
 
-            <View style={{ marginTop: 24 }}>
+            <View style={{ marginTop: 8 }}>
               <Text style={styles.sectionLabel}>Supermoc</Text>
               <View style={styles.chipContainer}>
                 {SUPERPOWERS.map(power => (
@@ -904,6 +955,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     borderRadius: 12,
     paddingHorizontal: 4,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  categoryTitle: {
+    fontSize: 16,
+    fontFamily: 'Montserrat_700Bold',
+    color: Colors.text,
   },
   sectionLabel: {
     fontSize: 18,
