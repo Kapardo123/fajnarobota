@@ -1,4 +1,4 @@
-import { View, StyleSheet, FlatList, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, ScrollView, Image, ActivityIndicator, RefreshControl } from 'react-native';
 import { Text, Avatar, List, Divider, Searchbar } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
@@ -24,48 +24,74 @@ export default function InboxScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchMatches();
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+        fetchMatches(true, user.id);
+      }
+    };
+    init();
 
-    // Nasłuchiwanie na nowe wiadomości w czasie rzeczywistym
+    // Nasłuchiwanie na nowe wiadomości i zmiany w matchach
+    const subscriptionName = `inbox-global-${Math.random().toString(36).substring(7)}`;
     const channel = supabase
-      .channel('inbox-updates')
+      .channel(subscriptionName)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        () => {
-          // Gdy pojawi się nowa wiadomość, odświeżamy listę patchy po cichu
+        { event: '*', schema: 'public', table: 'messages' },
+        (payload) => {
+          console.log('Realtime message change:', payload.eventType);
           fetchMatches(false);
         }
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'messages' },
-        () => {
-          // Gdy wiadomość zostanie oznaczona jako przeczytana, również odświeżamy po cichu
+        { event: '*', schema: 'public', table: 'matches' },
+        (payload) => {
+          console.log('Realtime match change:', payload.eventType);
           fetchMatches(false);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Inbox Realtime Status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
 
-  const fetchMatches = async (showLoading = true) => {
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchMatches(false);
+    setRefreshing(false);
+  };
+
+  const fetchMatches = async (showLoading = true, userIdOverride?: string) => {
     try {
       if (showLoading) setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      
+      const userId = userIdOverride || currentUserId;
+      if (!userId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        setCurrentUserId(user.id);
+      }
+      
+      const activeUserId = userId || (await supabase.auth.getUser()).data.user?.id;
+      if (!activeUserId) return;
 
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', activeUserId).single();
       const isCandidate = profile?.role === 'candidate';
 
-      // Pobierz matche z danymi drugiej strony
-      let query = supabase
+      // Pobierz matche
+      const { data: matchesData, error } = await supabase
         .from('matches')
         .select(`
           *,
@@ -73,14 +99,12 @@ export default function InboxScreen() {
           employer:profiles!employer_id(full_name, avatar_url),
           job:jobs(title)
         `)
-        .or(`candidate_id.eq.${user.id},employer_id.eq.${user.id}`)
+        .or(`candidate_id.eq.${activeUserId},employer_id.eq.${activeUserId}`)
         .order('created_at', { ascending: false });
-
-      const { data: matchesData, error } = await query;
 
       if (error) throw error;
 
-      // Pobierz wszystkie wiadomości dla tych patchy, aby sprawdzić nieprzeczytane
+      // Pobierz ostatnie wiadomości dla wszystkich patchy w jednym zapytaniu
       const matchIds = matchesData.map(m => m.id);
       let messagesData: any[] = [];
       
@@ -100,12 +124,11 @@ export default function InboxScreen() {
         const otherParty = isCandidate ? m.employer : m.candidate;
         const jobTitle = m.job?.title || 'Oferta';
         
-        // Znajdź ostatnią wiadomość i sprawdź czy są nieprzeczytane
         const chatMessages = messagesData.filter(msg => msg.match_id === m.id);
         const lastMsg = chatMessages.length > 0 ? chatMessages[0] : null;
         
         const hasUnread = chatMessages.some((msg: any) => 
-          msg.sender_id !== user.id && !msg.is_read
+          msg.sender_id !== activeUserId && !msg.is_read
         );
 
         return {
@@ -191,7 +214,12 @@ export default function InboxScreen() {
         iconColor={Colors.primary}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
+        }
+      >
         <View style={styles.newMatchesSection}>
           <Text variant="titleMedium" style={styles.sectionTitle}>Nowe Pary</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.newMatchesList}>
