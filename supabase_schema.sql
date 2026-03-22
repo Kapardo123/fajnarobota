@@ -45,12 +45,15 @@ alter table public.jobs enable row level security;
 
 -- Polityki bezpieczeństwa (uproszczone na start)
 create policy "Public profiles are viewable by everyone." on public.profiles for select using (true);
+create policy "Users can insert own profile." on public.profiles for insert with check (auth.uid() = id);
 create policy "Users can update own profile." on public.profiles for update using (auth.uid() = id);
 
 create policy "Candidates are viewable by everyone." on public.candidates for select using (true);
+create policy "Users can insert own candidate data." on public.candidates for insert with check (auth.uid() = id);
 create policy "Candidates can update own data." on public.candidates for update using (auth.uid() = id);
 
 create policy "Employers are viewable by everyone." on public.employers for select using (true);
+create policy "Users can insert own employer data." on public.employers for insert with check (auth.uid() = id);
 create policy "Employers can update own data." on public.employers for update using (auth.uid() = id);
 
 create policy "Jobs are viewable by everyone." on public.jobs for select using (true);
@@ -81,10 +84,13 @@ alter table public.matches enable row level security;
 
 -- Polityki dla swipes
 create policy "Users can view own swipes." on public.swipes for select using (auth.uid() = swiper_id);
+create policy "Users can view swipes targeting them." on public.swipes for select 
+  using (auth.uid() = target_id or exists (select 1 from public.jobs where id = target_id and employer_id = auth.uid()));
 create policy "Users can insert own swipes." on public.swipes for insert with check (auth.uid() = swiper_id);
 
 -- Polityki dla matches
 create policy "Users can view own matches." on public.matches for select using (auth.uid() = candidate_id or auth.uid() = employer_id);
+create policy "Users can insert matches." on public.matches for insert with check (auth.uid() = candidate_id or auth.uid() = employer_id);
 
 -- Tabela wiadomości (Chat)
 create table public.messages (
