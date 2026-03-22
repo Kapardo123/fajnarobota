@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     width: '100%',
-    height: SCREEN_HEIGHT * 0.7,
+    height: SCREEN_HEIGHT * 0.8, // Wydłużenie karty w dół
   },
   card: {
     flex: 1,
@@ -546,51 +546,51 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
-    padding: 24, // Zwiększony padding dla efektu "oddechu"
+    padding: 20, // Nieco mniejszy padding, aby zyskać miejsce
     justifyContent: 'space-between',
   },
   topBadgesRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    paddingTop: 10,
+    paddingTop: 5,
   },
   matchBadgeModern: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.primary,
-    gap: 6,
+    gap: 4,
   },
   matchTextModern: {
     color: Colors.primary,
     fontFamily: 'Montserrat_700Bold',
-    fontSize: 10,
-    letterSpacing: 1.2,
+    fontSize: 9, // Mniejsza czcionka
+    letterSpacing: 1,
   },
   distanceBadgeModern: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
-    gap: 6,
+    gap: 4,
   },
   distanceTextModern: {
     color: '#fff',
     fontFamily: 'Montserrat_700Bold',
-    fontSize: 10,
+    fontSize: 9, // Mniejsza czcionka
     letterSpacing: 1,
   },
   middleContainerModern: {
-    flex: 1,
+    flex: 1.5, // Pcha treść na dół, dając więcej miejsca
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -600,13 +600,12 @@ const styles = StyleSheet.create({
   },
   priceBadgeLarge: {
     backgroundColor: 'rgba(0,0,0,0.4)',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 18,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-  },
+    alignItems: 'center',  },
   priceLabelLarge: {
     fontSize: 10,
     fontFamily: 'Montserrat_700Bold',
@@ -617,16 +616,16 @@ const styles = StyleSheet.create({
   priceValueLarge: {
     color: '#fff',
     fontFamily: 'Montserrat_900Black',
-    fontSize: 24,
+    fontSize: 22, // Nieco mniejsza czcionka
   },
   lockContainerModern: {
     alignItems: 'center',
     gap: 15,
   },
   lockIconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 60, // Jeszcze mniejsza ikona, aby nie nachodziła na tekst
+    height: 60,
+    borderRadius: 30,
     backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -637,18 +636,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontFamily: 'Montserrat_800ExtraBold',
     fontSize: 18,
-    textAlign: 'center',
-  },
+    textAlign: 'center',  },
   lockSubtext: {
     color: 'rgba(255,255,255,0.6)',
     fontFamily: 'Montserrat_400Regular',
     fontSize: 13,
     marginTop: 4,
-    textAlign: 'center',
-  },
+    textAlign: 'center',  },
   overlayContentModern: {
-    gap: 20, // Zwiększony gap między sekcjami
-    paddingBottom: 10,
+    gap: 14,
+    paddingBottom: 15, // Odstęp od dołu karty
   },
   headerRowModern: {
     flexDirection: 'row',
@@ -656,35 +653,34 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardTitleModern: {
-    fontSize: 30,
+    fontSize: 20, // Jeszcze mniejszy tytuł dla oszczędności miejsca
     fontFamily: 'Montserrat_900Black',
     color: '#fff',
-    lineHeight: 34,
+    lineHeight: 24,
   },
   cardSubtitleModern: {
     fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 17,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.85)',
-    marginTop: 4,
+    marginTop: 2,
   },
   infoSectionModern: {
-    gap: 16, // Zwiększony gap
-  },
+    gap: 16, // Zwiększony gap  },
   descriptionBoxModern: {
     backgroundColor: 'rgba(255,255,255,0.08)',
-    padding: 16,
-    borderRadius: 14,
-    borderLeftWidth: 4,
+    padding: 10,
+    borderRadius: 10,
+    borderLeftWidth: 3,
     borderLeftColor: Colors.primary,
   },
   experienceSnippetModern: {
     flexDirection: 'row',
     backgroundColor: 'rgba(0,0,0,0.4)',
-    padding: 16,
-    borderRadius: 14,
+    padding: 10,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
+    alignItems: 'center', 
   },
   experienceLabelModern: {
     fontSize: 9,
@@ -700,9 +696,9 @@ const styles = StyleSheet.create({
   },
   cardDescriptionModern: {
     fontFamily: 'Montserrat_400Regular',
-    fontSize: 14,
+    fontSize: 12, // Mniejsza czcionka bio
     color: 'rgba(255,255,255,0.95)',
-    lineHeight: 20,
+    lineHeight: 16,
     fontStyle: 'italic',
   },
   tagGridModern: {
@@ -714,17 +710,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    gap: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4, // Mniejszy padding tagów
+    borderRadius: 8,
+    gap: 4,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   tagTextModern: {
     color: '#fff',
     fontFamily: 'Montserrat_500Medium',
-    fontSize: 13,
+    fontSize: 10, // Mniejsza czcionka tagów
   },
   tagMoreModern: {
     backgroundColor: 'rgba(255,255,255,0.15)',
