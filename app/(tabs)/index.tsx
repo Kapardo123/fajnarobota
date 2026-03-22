@@ -542,7 +542,12 @@ export default function SwipeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text variant="headlineSmall" style={styles.logo}>FajnaRobota</Text>
+        <View style={styles.logoRow}>
+          <View style={styles.logoBadgeSmall}>
+            <MaterialCommunityIcons name="briefcase-variant" size={16} color={Colors.primary} />
+          </View>
+          <Text style={styles.logoTextSmall}>Fajna<Text style={{color: Colors.primary}}>Robota</Text></Text>
+        </View>
         <IconButton 
           icon="filter-variant" 
           size={24} 
@@ -756,6 +761,25 @@ const styles = StyleSheet.create({
   logo: {
     fontFamily: 'Montserrat_900Black',
     color: Colors.primary,
+  },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  logoBadgeSmall: {
+    width: 32,
+    height: 32,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoTextSmall: {
+    fontSize: 20,
+    fontFamily: 'Montserrat_900Black',
+    color: '#000',
+    letterSpacing: -0.4,
   },
   cardContainer: {
     flex: 1,

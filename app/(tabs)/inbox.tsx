@@ -229,7 +229,7 @@ export default function InboxScreen() {
       </View>
 
       <Searchbar
-        placeholder="Szukaj par..."
+        placeholder="Szukaj w konwersacjach..."
         onChangeText={setSearchQuery}
         value={searchQuery}
         style={styles.searchBar}
@@ -238,7 +238,7 @@ export default function InboxScreen() {
       />
 
       <View style={styles.newMatchesSection}>
-        <Text variant="titleMedium" style={styles.sectionTitle}>Nowe Pary</Text>
+        <Text variant="titleMedium" style={styles.sectionTitle}>Ostatnie dopasowania</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.newMatchesList}>
           {matches.slice(0, 10).map(match => (
             <TouchableOpacity 
@@ -255,7 +255,7 @@ export default function InboxScreen() {
           ))}
           {matches.length === 0 && (
             <Text style={{ marginLeft: 20, color: Colors.textLight, fontFamily: 'Montserrat_400Regular' }}>
-              Brak nowych par. Swipe'uj dalej!
+              Brak nowych aktywności.
             </Text>
           )}
         </ScrollView>
@@ -264,7 +264,7 @@ export default function InboxScreen() {
       <Divider style={styles.sectionDivider} />
 
       <View style={styles.chatsSection}>
-        <Text variant="titleMedium" style={styles.sectionTitle}>Wiadomości</Text>
+        <Text variant="titleMedium" style={styles.sectionTitle}>Aktywne konwersacje</Text>
       </View>
     </>
   ), [matches, searchQuery]);
