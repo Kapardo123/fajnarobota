@@ -30,10 +30,17 @@ export default function LocationPicker({
   const [results, setResults] = useState<LocationResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [isSelectionActive, setIsSelectionActive] = useState(false);
   const abortControllerRef = React.useRef<AbortController | null>(null);
 
   // Debounce search to avoid too many API calls
   useEffect(() => {
+    // Jeśli właśnie coś wybraliśmy, nie szukajmy ponownie
+    if (isSelectionActive) {
+      setIsSelectionActive(false);
+      return;
+    }
+
     const timer = setTimeout(() => {
       if (query.length > 2 && showResults) {
         searchLocation(query);
@@ -41,7 +48,7 @@ export default function LocationPicker({
         setResults([]);
         setLoading(false);
       }
-    }, 500);
+    }, 400); // Nieco krótszy czas dla lepszej reakcji
 
     return () => {
       clearTimeout(timer);
@@ -52,21 +59,20 @@ export default function LocationPicker({
   }, [query, showResults]);
 
   const searchLocation = async (text: string) => {
-    // Przerywamy poprzednie zapytanie, jeśli jeszcze trwa
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     
-    // Tworzymy nowy kontroler dla bieżącego zapytania
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
     try {
       setLoading(true);
-      // Używamy Nominatim (OpenStreetMap) API - darmowe, nie wymaga klucza
-      // Dodajemy featuretype=settlement aby skupić się na miejscowościach
+      // Czyścimy wyniki przy starcie nowego wyszukiwania, aby uniknąć dublowania w UI
+      setResults([]);
+
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&countrycodes=pl&addressdetails=1&limit=5&featuretype=settlement`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&countrycodes=pl&addressdetails=1&limit=10&featuretype=settlement`,
         {
           signal: controller.signal,
           headers: {
@@ -76,20 +82,24 @@ export default function LocationPicker({
       );
       const data = await response.json();
       
-      // Jeśli zapytanie nie zostało przerwane, aktualizujemy wyniki
       if (!controller.signal.aborted) {
-        // Filtrujemy duplikaty po place_id (na wszelki wypadek)
-        const uniqueData = data.filter((v: any, i: number, a: any[]) => 
-          a.findIndex(t => t.place_id === v.place_id) === i
-        );
+        // Bardzo restrykcyjna filtracja duplikatów:
+        // 1. Po place_id
+        // 2. Po uproszczonej nazwie (Miasto + Województwo)
+        const seenNames = new Set();
+        const uniqueData = data.filter((item: any) => {
+          const simpleName = item.display_name.split(',').slice(0, 2).join(',').trim().toLowerCase();
+          if (seenNames.has(simpleName)) {
+            return false;
+          }
+          seenNames.add(simpleName);
+          return true;
+        }).slice(0, 5); // Zwracamy tylko top 5 unikalnych
         
         setResults(uniqueData);
       }
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        // Ignorujemy błąd przerwania zapytania
-        return;
-      }
+      if (error.name === 'AbortError') return;
       logger.error('Location search error', error);
     } finally {
       if (!controller.signal.aborted) {
@@ -99,7 +109,7 @@ export default function LocationPicker({
   };
 
   const handleSelect = (item: LocationResult) => {
-    // Czyścimy nazwę, aby była czytelniejsza (np. tylko Miasto, Powiat/Województwo)
+    setIsSelectionActive(true);
     const displayName = item.display_name.split(',').slice(0, 2).join(',').trim();
     setQuery(displayName);
     setShowResults(false);
