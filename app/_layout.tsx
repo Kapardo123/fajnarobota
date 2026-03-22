@@ -44,6 +44,8 @@ export default function RootLayout() {
       const { data: { session } } = await supabase.auth.getSession();
       const currentPath = segments.join('/');
       
+      console.log('Root: Initial session check', { session: !!session, path: currentPath });
+      
       if (session && (currentPath === '' || currentPath === 'index')) {
         console.log('Auth: Initial session found, redirecting to tabs...');
         router.replace('/(tabs)');
@@ -55,28 +57,21 @@ export default function RootLayout() {
     checkInitialSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth Event:', event, session ? 'User logged in' : 'User logged out');
+      console.log('Auth Event Global:', event, session ? 'User logged in' : 'User logged out');
       
       const inTabsGroup = segments[0] === '(tabs)';
       
-      // Kluczowa zmiana: przy SIGNED_OUT natychmiast czyścimy wszystko i przekierowujemy
-      if (event === 'SIGNED_OUT') {
-        console.log('Auth: SIGNED_OUT detected, forcing redirect to hero...');
-        // Czyścimy cache routera i przekierowujemy
+      // Jeśli użytkownik jest wylogowany (SIGNED_OUT) lub brak sesji w tabsach
+      if (event === 'SIGNED_OUT' || (!session && inTabsGroup)) {
+        console.log('Auth: Forcing hard reset to hero...');
+        // To jest najbardziej radykalne - czyścimy wszystko i rzucamy na start
         router.replace('/');
         return;
       }
 
-      // Jeśli sesja wygasła lub została usunięta, a jesteśmy w tabsach
-      if (!session && inTabsGroup) {
-        console.log('Auth: No session in tabs, redirecting to hero...');
-        router.replace('/');
-        return;
-      }
-
-      // TYLKO jeśli zdarzenie to logowanie, wymuś wejście do tabsów
+      // Jeśli sesja się pojawiła (SIGNED_IN), a nie jesteśmy w tabsach
       if (event === 'SIGNED_IN' && session && !inTabsGroup) {
-        console.log('Auth: User signed in, redirecting to tabs...');
+        console.log('Auth: User logged in, redirecting to tabs...');
         router.replace('/(tabs)');
       }
     });

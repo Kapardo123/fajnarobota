@@ -60,14 +60,22 @@ export default function ProfileScreen() {
   }, []);
 
   const handleLogout = async () => {
-    logger.action('Wyloguj (Global)');
+    logger.action('Wyloguj (Hard Reset)');
     try {
-      // Wywołujemy signOut. 
-      // Globalny listener w app/_layout.tsx wykryje zdarzenie 'SIGNED_OUT' i nas przekieruje.
+      // 1. Wyloguj w Supabase
       await supabase.auth.signOut();
+      
+      // 2. Najbardziej radykalne rozwiązanie: przeładuj całą aplikację
+      // To wymusi wyczyszczenie wszystkich stanów, pamięci i nawigacji
+      if (Platform.OS === 'web') {
+        window.location.href = '/';
+      } else {
+        // W React Native/Expo Updates możemy użyć reloadAsync, ale najprościej 
+        // i najskuteczniej będzie po prostu przekierować do root i pozwolić globalnemu listenerowi zadziałać
+        router.replace('/');
+      }
     } catch (error: any) {
       console.error('Logout error:', error);
-      // W razie błędu i tak próbujemy wrócić do root
       router.replace('/');
     }
   };
