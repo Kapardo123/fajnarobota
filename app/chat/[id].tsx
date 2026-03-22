@@ -1,4 +1,4 @@
-import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, TouchableOpacity, Alert, Modal, ScrollView } from 'react-native';
 import { Text, TextInput, IconButton, Avatar, Appbar, Card } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
@@ -23,6 +23,14 @@ interface Message {
   is_read: boolean;
 }
 
+interface JobInfo {
+  title: string;
+  salary_range: string;
+  location_name: string;
+  description: string;
+  skills: string[];
+}
+
 export default function ChatScreen() {
   const { id: rawId, name } = useLocalSearchParams();
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -32,6 +40,8 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [jobInfo, setJobInfo] = useState<JobInfo | null>(null);
+  const [jobModalVisible, setJobInfoVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   const markMessagesAsRead = async (matchId: string, currentUserId: string) => {
@@ -66,21 +76,41 @@ export default function ChatScreen() {
         
         setUserId(session.user.id);
 
-        // Pobierz wiadomości
-        const { data: msgs, error } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('match_id', id)
-          .order('created_at', { ascending: true });
+        // Pobierz wiadomości oraz informacje o ofercie
+        const [msgsRes, matchRes] = await Promise.all([
+          supabase
+            .from('messages')
+            .select('*')
+            .eq('match_id', id)
+            .order('created_at', { ascending: true }),
+          supabase
+            .from('matches')
+            .select('job:jobs(title, salary_range, location_name, description, required_skills)')
+            .eq('id', id)
+            .single()
+        ]);
 
-        if (error) throw error;
+        if (msgsRes.error) throw msgsRes.error;
+        if (matchRes.error) console.error('Error fetching job info:', matchRes.error);
+
         if (!isMounted) return;
 
-        const formattedMsgs = msgs.map(m => ({
+        const formattedMsgs = msgsRes.data.map(m => ({
           ...m,
           is_me: m.sender_id === session.user.id
         }));
         setMessages(formattedMsgs);
+
+        if (matchRes.data?.job) {
+          const job = matchRes.data.job as any;
+          setJobInfo({
+            title: job.title,
+            salary_range: job.salary_range,
+            location_name: job.location_name,
+            description: job.description,
+            skills: job.required_skills || []
+          });
+        }
 
         // Oznacz jako przeczytane
         if (formattedMsgs.some(m => !m.is_me && !m.is_read)) {
@@ -352,7 +382,17 @@ export default function ChatScreen() {
         <Appbar.Content 
           title={Array.isArray(name) ? name[0] : (name || 'Rozmowa')} 
           titleStyle={styles.headerTitle} 
+          subtitle={jobInfo ? `Dotyczy: ${jobInfo.title}` : ''}
+          subtitleStyle={styles.headerSubtitle}
+          onPress={() => jobInfo && setJobInfoVisible(true)}
         />
+        {jobInfo && (
+          <Appbar.Action 
+            icon="information-outline" 
+            onPress={() => setJobInfoVisible(true)} 
+            color={Colors.primary} 
+          />
+        )}
       </Appbar.Header>
 
       {loading ? (
@@ -409,6 +449,60 @@ export default function ChatScreen() {
           />
         </View>
       </KeyboardAvoidingView>
+
+      {/* Modal z parametrami stanowiska */}
+      <Modal 
+        visible={jobModalVisible} 
+        onRequestClose={() => setJobInfoVisible(false)} 
+        transparent={true} 
+        animationType="slide"
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setJobInfoVisible(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text variant="headlineSmall" style={styles.modalTitle}>{jobInfo?.title}</Text>
+                <Text variant="labelMedium" style={{ color: Colors.primary, fontFamily: 'Montserrat_700Bold' }}>
+                  {jobInfo?.salary_range}
+                </Text>
+              </View>
+              <IconButton icon="close" onPress={() => setJobInfoVisible(false)} />
+            </View>
+
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.infoRow}>
+                <MaterialCommunityIcons name="map-marker" size={20} color={Colors.textLight} />
+                <Text style={styles.infoText}>{jobInfo?.location_name}</Text>
+              </View>
+
+              <Text style={styles.sectionLabel}>Opis stanowiska</Text>
+              <Text style={styles.descriptionText}>{jobInfo?.description}</Text>
+
+              <Text style={styles.sectionLabel}>Wymagane umiejętności</Text>
+              <View style={styles.skillsContainer}>
+                {jobInfo?.skills.map((skill, index) => (
+                  <Card key={index} style={styles.skillChip}>
+                    <Text style={styles.skillText}>{skill}</Text>
+                  </Card>
+                ))}
+              </View>
+            </ScrollView>
+
+            <Button 
+              mode="contained" 
+              onPress={() => setJobInfoVisible(false)}
+              style={styles.closeBtn}
+              buttonColor={Colors.primary}
+            >
+              Zamknij
+            </Button>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -428,8 +522,13 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: 'Montserrat_700Bold',
-    fontSize: 18,
+    fontSize: 16,
     color: Colors.text,
+  },
+  headerSubtitle: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 12,
+    color: Colors.primary,
   },
   avatar: {
     marginLeft: 8,
@@ -567,5 +666,76 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_500Medium',
     fontSize: 12,
     color: Colors.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontFamily: 'Montserrat_800ExtraBold',
+    color: Colors.text,
+  },
+  modalScroll: {
+    marginBottom: 20,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  infoText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    color: Colors.textLight,
+    fontSize: 14,
+  },
+  sectionLabel: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 16,
+    color: Colors.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  descriptionText: {
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 14,
+    color: Colors.text,
+    lineHeight: 20,
+  },
+  skillsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  skillChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: Colors.background,
+    elevation: 0,
+  },
+  skillText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 12,
+    color: Colors.primary,
+  },
+  closeBtn: {
+    borderRadius: 12,
+    marginTop: 10,
   },
 });

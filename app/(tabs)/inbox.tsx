@@ -15,6 +15,7 @@ interface Match {
   created_at: string;
   display_name: string;
   display_image: string;
+  job_title: string;
   last_message?: string;
   last_message_at?: string;
   unread?: boolean;
@@ -155,6 +156,7 @@ export default function InboxScreen() {
           created_at: m.created_at,
           display_name: (otherParty as any)?.full_name || 'Użytkownik',
           display_image: (otherParty as any)?.avatar_url || `https://picsum.photos/seed/${m.id}/100`,
+          job_title: jobTitle,
           last_message: lastMsg ? lastMsg.content : (isCandidate ? `Match z ofertą: ${jobTitle}` : `Chce pracować jako: ${jobTitle}`),
           last_message_at: lastMsg ? lastMsg.created_at : m.created_at,
           unread: hasUnread
@@ -181,7 +183,16 @@ export default function InboxScreen() {
       })}
     >
       <List.Item
-        title={item.display_name}
+        title={() => (
+          <View>
+            <Text variant="titleMedium" style={[styles.chatTitle, item.unread && styles.unreadText]}>
+              {item.display_name}
+            </Text>
+            <Text variant="labelSmall" style={styles.jobLabel}>
+              Dotyczy: {item.job_title}
+            </Text>
+          </View>
+        )}
         description={item.last_message}
         left={() => (
           <View>
@@ -365,6 +376,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_700Bold',
     color: Colors.text,
     fontSize: 16,
+  },
+  jobLabel: {
+    fontFamily: 'Montserrat_600SemiBold',
+    color: Colors.primary,
+    fontSize: 11,
+    marginTop: -2,
+    marginBottom: 2,
   },
   unreadText: {
     fontFamily: 'Montserrat_900Black',
