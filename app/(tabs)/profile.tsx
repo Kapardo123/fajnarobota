@@ -188,49 +188,29 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    logger.info('Użytkownik kliknął przycisk wyloguj');
+    logger.action('Wyloguj');
     Alert.alert(
       'Wyloguj się',
       'Czy na pewno chcesz się wylogować?',
       [
-        { text: 'Anuluj', style: 'cancel', onPress: () => logger.info('Anulowano wylogowanie') },
+        { text: 'Anuluj', style: 'cancel' },
         { 
           text: 'Wyloguj', 
           style: 'destructive',
           onPress: async () => {
             try {
-              logger.action('Kliknięto przycisk "Wyloguj" w alercie');
-              logger.info('Rozpoczynanie procesu wylogowania');
+              // 1. Wyloguj w Supabase (nie czekamy, żeby nie blokować UI)
+              supabase.auth.signOut();
               
-              // 1. Wyloguj w Supabase (nie czekamy wiecznie, timeout 3s)
-              const logoutPromise = supabase.auth.signOut();
-              const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('SignOut Timeout')), 3000));
-              
-              try {
-                await Promise.race([logoutPromise, timeoutPromise]);
-                logger.info('Supabase signOut zakończony pomyślnie');
-              } catch (e: any) {
-                logger.warn('SignOut ostrzeżenie (timeout lub błąd), kontynuujemy wylogowanie lokalne', { message: e.message });
-              }
-              
-              // 2. Czyścimy stan lokalny i przekierowujemy natychmiast
+              // 2. Czyścimy stan lokalny
               setProfile(null);
               setCandidateDetails(null);
               setEmployerDetails(null);
               
-              logger.info('Wymuszanie przekierowania do /');
-              
-              // Używamy setTimeout żeby upewnić się, że alert się zamknął i stan się zaktualizował
-              setTimeout(() => {
-                router.replace('/');
-                // Drugi fallback gdyby router.replace nie zadziałał
-                setTimeout(() => {
-                  router.push('/');
-                }, 500);
-              }, 100);
-              
+              // 3. Natychmiastowe przekierowanie
+              router.replace('/');
             } catch (error: any) {
-              logger.error('Błąd wylogowania', { message: error.message });
+              logger.error('Logout error', error);
               router.replace('/');
             }
           }
@@ -504,12 +484,16 @@ export default function ProfileScreen() {
             title="Pomoc i Wsparcie"
             left={props => <List.Icon {...props} icon="help-circle" color={Colors.primary} />}
           />
-          <List.Item
-            title="Wyloguj się"
-            left={props => <List.Icon {...props} icon="logout" color={Colors.error} />}
-            titleStyle={{ color: Colors.error, fontFamily: 'Montserrat_700Bold' }}
+          <TouchableOpacity 
+            style={styles.logoutItem} 
             onPress={handleLogout}
-          />
+            activeOpacity={0.7}
+          >
+            <View style={styles.logoutItemContent}>
+              <MaterialCommunityIcons name="logout" size={24} color={Colors.error} style={styles.logoutIcon} />
+              <Text style={styles.logoutText}>Wyloguj się</Text>
+            </View>
+          </TouchableOpacity>
         </List.Section>
       </View>
 
@@ -647,7 +631,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   contentContainer: {
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   centered: {
     justifyContent: 'center',
@@ -823,6 +807,22 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     fontFamily: 'Montserrat_400Regular',
     padding: 20,
+  },
+  logoutItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  logoutItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoutIcon: {
+    marginRight: 16,
+  },
+  logoutText: {
+    color: Colors.error,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 16,
   },
   listSubheader: {
     fontFamily: 'Montserrat_700Bold',
