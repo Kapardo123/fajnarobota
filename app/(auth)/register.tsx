@@ -748,13 +748,13 @@ export default function RegisterScreen() {
 
             <View style={{ marginTop: 24 }}>
               <TextInput
-                label="Napisz coś o sobie (Bio)"
+                label="Nie znalazłeś swojej umiejętności powyżej? Napisz tutaj więcej o tym co potrafisz oraz coś o sobie"
                 value={candidateData.bio}
                 onChangeText={(text) => setCandidateData({...candidateData, bio: text})}
                 mode="outlined"
                 multiline
                 numberOfLines={4}
-                placeholder="np. Jestem studentem szukającym pracy dorywczej w weekendy..."
+                placeholder="Np. Posiadam własne auto dostawcze, znam się na mechanice, albo po prostu napisz kilka słów o sobie..."
                 style={styles.input}
                 outlineColor={Colors.border}
                 activeOutlineColor={Colors.primary}
