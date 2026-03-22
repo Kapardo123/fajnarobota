@@ -43,6 +43,7 @@ interface CandidateDetails {
   experience_history?: { company: string; position: string; period: string }[];
   availability_status?: string;
   personality_traits?: { label: string; value: number }[];
+  certifications?: { id: string; name: string; icon: string }[];
 }
 
 interface EmployerDetails {
@@ -85,6 +86,21 @@ export default function ProfileScreen() {
   const [tempExp, setTempExp] = useState({ company: '', position: '', period: '' });
   const [uploading, setUploading] = useState(false);
   const [isEditingAvailability, setIsEditingAvailability] = useState(false);
+  const [isEditingCerts, setIsEditingCerts] = useState(false);
+
+  // Lista dostępnych uprawnień do wyboru
+  const AVAILABLE_CERTS = [
+    { id: 'forklift', name: 'Wózki widłowe', icon: 'forklift' },
+    { id: 'sanepid', name: 'Sanepid', icon: 'food-apple' },
+    { id: 'driving_b', name: 'Prawo jazdy B', icon: 'car' },
+    { id: 'driving_c', name: 'Prawo jazdy C', icon: 'truck' },
+    { id: 'first_aid', name: 'Pierwsza pomoc', icon: 'medical-bag' },
+    { id: 'welding', name: 'Spawacz', icon: 'fire' },
+    { id: 'sep', name: 'Uprawnienia SEP', icon: 'lightning-bolt' },
+    { id: 'crane', name: 'Suwnice', icon: 'crane' },
+    { id: 'security', name: 'Ochrona', icon: 'shield-account' },
+    { id: 'english', name: 'Angielski B2', icon: 'translate' },
+  ];
 
   // Image editing state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -230,6 +246,7 @@ export default function ProfileScreen() {
             const extraData = JSON.parse(candData.bio);
             processedCandData.availability_status = extraData.availability || '';
             processedCandData.bio = extraData.text || '';
+            processedCandData.certifications = extraData.certifications || [];
           }
         } catch (e) {
           // Jeśli bio nie jest JSONem, zostawiamy jak jest
@@ -503,7 +520,8 @@ export default function ProfileScreen() {
 
       const newBioData = {
         text: candidateDetails?.bio || '',
-        availability: status
+        availability: status,
+        certifications: candidateDetails?.certifications || []
       };
 
       const { error } = await supabase
@@ -520,6 +538,44 @@ export default function ProfileScreen() {
       logger.error('Update availability error', error);
       Alert.alert('Błąd', 'Nie udało się zaktualizować statusu. Spróbuj ponownie później.');
     }
+  };
+
+  const updateCerts = async (certs: any[]) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const newBioData = {
+        text: candidateDetails?.bio || '',
+        availability: candidateDetails?.availability_status || '',
+        certifications: certs
+      };
+
+      const { error } = await supabase
+        .from('candidates')
+        .update({ bio: JSON.stringify(newBioData) })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      setCandidateDetails(prev => prev ? { ...prev, certifications: certs } : null);
+      Alert.alert('Sukces', 'Uprawnienia zostały zaktualizowane.');
+    } catch (error: any) {
+      logger.error('Update certs error', error);
+      Alert.alert('Błąd', 'Nie udało się zaktualizować uprawnień.');
+    }
+  };
+
+  const toggleCert = (cert: any) => {
+    const currentCerts = candidateDetails?.certifications || [];
+    const exists = currentCerts.find(c => c.id === cert.id);
+    let newList;
+    if (exists) {
+      newList = currentCerts.filter(c => c.id !== cert.id);
+    } else {
+      newList = [...currentCerts, cert];
+    }
+    updateCerts(newList);
   };
 
   if (loading) {
@@ -598,20 +654,21 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <List.Section>
-          <List.Subheader style={styles.listSubheader}>O mnie (Bio)</List.Subheader>
-          <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-            <Text style={styles.bioText}>
-              {candidateDetails?.bio || 'Nie dodano jeszcze opisu. Kliknij edytuj, aby opowiedzieć o sobie.'}
-            </Text>
-            <Button 
-              mode="text" 
-              onPress={() => setIsEditingBio(true)}
-              style={{ alignSelf: 'flex-end' }}
-              textColor={Colors.primary}
-              icon="pencil"
-            >
-              Edytuj opis
-            </Button>
+          <View style={styles.sectionHeader}>
+            <Text variant="titleMedium" style={styles.listSubheader}>Uprawnienia i Certyfikaty</Text>
+            <IconButton icon="pencil" size={20} iconColor={Colors.primary} onPress={() => setIsEditingCerts(true)} />
+          </View>
+          <View style={styles.certsGrid}>
+            {candidateDetails?.certifications && candidateDetails.certifications.length > 0 ? (
+              candidateDetails.certifications.map((cert) => (
+                <View key={cert.id} style={styles.certBadge}>
+                  <MaterialCommunityIcons name={cert.icon as any} size={20} color={Colors.primary} />
+                  <Text style={styles.certName}>{cert.name}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.noCertsText}>Brak dodanych uprawnień.</Text>
+            )}
           </View>
         </List.Section>
       </View>
@@ -1166,6 +1223,67 @@ export default function ProfileScreen() {
         onSave={handleSaveEditedImage}
         onCancel={() => setEditorVisible(false)}
       />
+
+      {/* Modal edycji Uprawnień */}
+      <Modal 
+        visible={isEditingCerts} 
+        onRequestClose={() => setIsEditingCerts(false)} 
+        transparent={true} 
+        animationType="slide"
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setIsEditingCerts(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text variant="headlineSmall" style={styles.modalTitle}>Wybierz uprawnienia</Text>
+              <IconButton icon="close" onPress={() => setIsEditingCerts(false)} />
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.chipGrid}>
+                {AVAILABLE_CERTS.map(cert => {
+                  const isSelected = candidateDetails?.certifications?.some(c => c.id === cert.id);
+                  return (
+                    <Chip 
+                      key={cert.id}
+                      selected={isSelected}
+                      onPress={() => toggleCert(cert)}
+                      style={[
+                        styles.certChip,
+                        isSelected && { backgroundColor: Colors.primary }
+                      ]}
+                      textStyle={[
+                        styles.certChipText,
+                        isSelected && { color: '#fff' }
+                      ]}
+                      icon={() => (
+                        <MaterialCommunityIcons 
+                          name={cert.icon as any} 
+                          size={18} 
+                          color={isSelected ? '#fff' : Colors.primary} 
+                        />
+                      )}
+                      showSelectedCheck={false}
+                    >
+                      {cert.name}
+                    </Chip>
+                  );
+                })}
+              </View>
+            </ScrollView>
+            <Button 
+              mode="contained" 
+              onPress={() => setIsEditingCerts(false)}
+              style={styles.modalSubmitBtn}
+              buttonColor={Colors.primary}
+            >
+              Gotowe
+            </Button>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ScrollView>
   );
 }
@@ -1312,6 +1430,50 @@ const styles = StyleSheet.create({
   availabilityText: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 14,
+  },
+  certsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 10,
+  },
+  certBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 200, 83, 0.05)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 200, 83, 0.1)',
+    gap: 8,
+  },
+  certName: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 12,
+    color: Colors.text,
+  },
+  noCertsText: {
+    fontFamily: 'Montserrat_400Regular',
+    color: Colors.textLight,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    fontStyle: 'italic',
+  },
+  chipGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    paddingVertical: 10,
+  },
+  certChip: {
+    marginBottom: 4,
+    borderRadius: 10,
+  },
+  certChipText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 12,
   },
   radarSection: {
     width: '100%',
