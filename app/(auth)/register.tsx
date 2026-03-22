@@ -380,7 +380,7 @@ export default function RegisterScreen() {
                   />
                   {errors.age && <Text style={styles.errorText}>{errors.age}</Text>}
                 </View>
-                <View>
+                <View style={{ zIndex: 1000 }}>
                   <LocationPicker
                     label="Miejscowość"
                     onLocationSelect={(loc) => {
@@ -441,7 +441,7 @@ export default function RegisterScreen() {
                   />
                   {errors.companyName && <Text style={styles.errorText}>{errors.companyName}</Text>}
                 </View>
-                <View>
+                <View style={{ zIndex: 1000 }}>
                   <LocationPicker
                     label="Miejscowość"
                     onLocationSelect={(loc) => {

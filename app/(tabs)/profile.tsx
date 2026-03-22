@@ -581,7 +581,7 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            <View>
+            <View style={{ zIndex: 1000 }}>
               <LocationPicker 
                 label="Lokalizacja"
                 onLocationSelect={(loc) => {
