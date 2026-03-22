@@ -145,56 +145,65 @@ export default function ChatScreen() {
   }, [id, userId]);
 
   const sendMessage = async () => {
-    if (inputText.trim() && userId && id) {
-      const text = inputText.trim();
-      setInputText('');
-
-      // Optimistic update
-      const tempId = `temp-${Date.now()}`;
-      const optimisticMsg: Message = {
-        id: tempId,
-        match_id: id,
-        sender_id: userId,
-        content: text,
-        type: 'text',
-        created_at: new Date().toISOString(),
-        is_me: true,
-        is_read: false
-      };
-      
-      setMessages(prev => [...prev, optimisticMsg]);
-      
-      // Scroll to bottom
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-
-      try {
-        const { data, error } = await supabase
-          .from('messages')
-          .insert({
-            match_id: id,
-            sender_id: userId,
-            content: text,
-            type: 'text',
-            is_read: false
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        // Replace optimistic message with the real one
-        if (data) {
-          setMessages(prev => prev.map(m => m.id === tempId ? { ...data, is_me: true } : m));
-        }
-      } catch (error: any) {
-        console.error('Error sending message:', error);
-        // Remove optimistic message on error
-        setMessages(prev => prev.filter(m => m.id !== tempId));
-        setInputText(text);
-        Alert.alert('Błąd wysyłania', error.message || 'Nie udało się wysłać wiadomości.');
+    if (!inputText.trim() || !id) return;
+    
+    let activeUserId = userId;
+    if (!activeUserId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        Alert.alert('Błąd', 'Musisz być zalogowany, aby wysłać wiadomość.');
+        return;
       }
+      activeUserId = user.id;
+      setUserId(user.id);
+    }
+
+    const text = inputText.trim();
+    setInputText('');
+
+    // Optimistic update
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: Message = {
+      id: tempId,
+      match_id: id,
+      sender_id: activeUserId,
+      content: text,
+      type: 'text',
+      created_at: new Date().toISOString(),
+      is_me: true,
+      is_read: false
+    };
+    
+    setMessages(prev => [...prev, optimisticMsg]);
+    
+    // Scroll to bottom
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          match_id: id,
+          sender_id: activeUserId,
+          content: text,
+          type: 'text'
+          // is_read zostanie ustawione na false domyślnie w bazie
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...data, is_me: true } : m));
+      }
+    } catch (error: any) {
+      console.error('Detailed Error sending message:', error);
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      setInputText(text);
+      Alert.alert('Błąd wysyłania', `Kod: ${error.code || 'unknown'}\n${error.message}`);
     }
   };
 

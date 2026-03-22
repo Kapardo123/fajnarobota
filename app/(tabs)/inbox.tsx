@@ -77,24 +77,29 @@ export default function InboxScreen() {
     try {
       if (showLoading) setLoading(true);
       
-      const userId = userIdOverride || currentUserId;
-      if (!userId) {
+      let activeUserId = userIdOverride || currentUserId;
+      if (!activeUserId) {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          setLoading(false);
+          return;
+        }
+        activeUserId = user.id;
         setCurrentUserId(user.id);
       }
-      
-      const activeUserId = userId || (await supabase.auth.getUser()).data.user?.id;
-      if (!activeUserId) return;
 
       const { data: profile } = await supabase.from('profiles').select('role').eq('id', activeUserId).single();
       const isCandidate = profile?.role === 'candidate';
 
       // Pobierz matche
-      const { data: matchesData, error } = await supabase
+      const { data: matchesData, error: matchesError } = await supabase
         .from('matches')
         .select(`
-          *,
+          id,
+          created_at,
+          candidate_id,
+          employer_id,
+          job_id,
           candidate:profiles!candidate_id(full_name, avatar_url),
           employer:profiles!employer_id(full_name, avatar_url),
           job:jobs(title)
@@ -102,29 +107,33 @@ export default function InboxScreen() {
         .or(`candidate_id.eq.${activeUserId},employer_id.eq.${activeUserId}`)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (matchesError) {
+        console.error('Error fetching matchesData:', matchesError);
+        throw matchesError;
+      }
 
-      // Pobierz ostatnie wiadomości dla wszystkich patchy w jednym zapytaniu
+      if (!matchesData || matchesData.length === 0) {
+        setMatches([]);
+        return;
+      }
+
+      // Pobierz ostatnie wiadomości
       const matchIds = matchesData.map(m => m.id);
-      let messagesData: any[] = [];
+      const { data: messagesData, error: msgsError } = await supabase
+        .from('messages')
+        .select('match_id, content, created_at, sender_id, is_read')
+        .in('match_id', matchIds)
+        .order('created_at', { ascending: false });
       
-      if (matchIds.length > 0) {
-        const { data: msgs, error: msgsError } = await supabase
-          .from('messages')
-          .select('match_id, content, created_at, sender_id, is_read')
-          .in('match_id', matchIds)
-          .order('created_at', { ascending: false });
-        
-        if (!msgsError) {
-          messagesData = msgs;
-        }
+      if (msgsError) {
+        console.error('Error fetching messagesData:', msgsError);
       }
 
       const formattedMatches: Match[] = matchesData.map(m => {
         const otherParty = isCandidate ? m.employer : m.candidate;
-        const jobTitle = m.job?.title || 'Oferta';
+        const jobTitle = (m.job as any)?.title || 'Oferta';
         
-        const chatMessages = messagesData.filter(msg => msg.match_id === m.id);
+        const chatMessages = (messagesData || []).filter(msg => msg.match_id === m.id);
         const lastMsg = chatMessages.length > 0 ? chatMessages[0] : null;
         
         const hasUnread = chatMessages.some((msg: any) => 
@@ -137,8 +146,8 @@ export default function InboxScreen() {
           employer_id: m.employer_id,
           job_id: m.job_id,
           created_at: m.created_at,
-          display_name: otherParty?.full_name || 'Użytkownik',
-          display_image: otherParty?.avatar_url || `https://picsum.photos/seed/${m.id}/100`,
+          display_name: (otherParty as any)?.full_name || 'Użytkownik',
+          display_image: (otherParty as any)?.avatar_url || `https://picsum.photos/seed/${m.id}/100`,
           last_message: lastMsg ? lastMsg.content : (isCandidate ? `Match z ofertą: ${jobTitle}` : `Chce pracować jako: ${jobTitle}`),
           last_message_at: lastMsg ? lastMsg.created_at : m.created_at,
           unread: hasUnread
@@ -151,7 +160,7 @@ export default function InboxScreen() {
         return timeB - timeA;
       }));
     } catch (error) {
-      console.error('Error fetching matches:', error);
+      console.error('Error in fetchMatches:', error);
     } finally {
       setLoading(false);
     }
