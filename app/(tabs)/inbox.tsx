@@ -37,14 +37,15 @@ export default function InboxScreen() {
       const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
       const isCandidate = profile?.role === 'candidate';
 
-      // Pobierz matche z danymi drugiej strony
+      // Pobierz matche z danymi drugiej strony oraz informacją o wiadomościach
       let query = supabase
         .from('matches')
         .select(`
           *,
           candidate:profiles!candidate_id(full_name, avatar_url),
           employer:profiles!employer_id(full_name, avatar_url),
-          job:jobs(title, employers(company_name))
+          job:jobs(title, employers(company_name)),
+          messages(content, created_at, sender_id, is_read)
         `)
         .or(`candidate_id.eq.${user.id},employer_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
@@ -58,6 +59,16 @@ export default function InboxScreen() {
         const jobTitle = m.job?.title || 'Oferta';
         const companyName = m.job?.employers?.company_name || otherParty?.full_name;
 
+        // Znajdź ostatnią wiadomość i sprawdź czy są nieprzeczytane
+        const chatMessages = m.messages || [];
+        const lastMsg = chatMessages.length > 0 
+          ? chatMessages.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+          : null;
+        
+        const hasUnread = chatMessages.some((msg: any) => 
+          msg.sender_id !== user.id && !msg.is_read
+        );
+
         return {
           id: m.id,
           candidate_id: m.candidate_id,
@@ -66,9 +77,9 @@ export default function InboxScreen() {
           created_at: m.created_at,
           display_name: isCandidate ? companyName : otherParty?.full_name || 'Kandydat',
           display_image: otherParty?.avatar_url || `https://picsum.photos/seed/${m.id}/100`,
-          last_message: isCandidate ? `Match z ofertą: ${jobTitle}` : `Chce pracować jako: ${jobTitle}`,
-          last_message_at: m.created_at,
-          unread: false
+          last_message: lastMsg ? lastMsg.content : (isCandidate ? `Match z ofertą: ${jobTitle}` : `Chce pracować jako: ${jobTitle}`),
+          last_message_at: lastMsg ? lastMsg.created_at : m.created_at,
+          unread: hasUnread
         };
       });
 
@@ -89,7 +100,18 @@ export default function InboxScreen() {
     >
       <List.Item
         title={item.display_name}
-        description={item.last_message}
+        description={() => (
+          <View style={styles.lastMsgRow}>
+            <Text 
+              variant="bodySmall" 
+              numberOfLines={1} 
+              style={[item.unread ? styles.unreadMessage : styles.readMessage, { flex: 1 }]}
+            >
+              {item.last_message}
+            </Text>
+            {item.unread && <View style={styles.unreadBadge} />}
+          </View>
+        )}
         left={() => (
           <Image source={{ uri: item.display_image }} style={styles.chatAvatar} />
         )}
@@ -98,11 +120,9 @@ export default function InboxScreen() {
             <Text variant="labelSmall" style={styles.timestamp}>
               {new Date(item.last_message_at || item.created_at).toLocaleDateString()}
             </Text>
-            {item.unread && <View style={styles.unreadBadge} />}
           </View>
         )}
         titleStyle={[styles.chatTitle, item.unread && styles.unreadText]}
-        descriptionStyle={item.unread ? styles.unreadMessage : styles.readMessage}
         style={styles.listItem}
       />
     </TouchableOpacity>
@@ -291,5 +311,11 @@ const styles = StyleSheet.create({
   readMessage: {
     fontFamily: 'Montserrat_400Regular',
     color: Colors.textLight,
+  },
+  lastMsgRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
   },
 });

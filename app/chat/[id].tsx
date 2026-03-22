@@ -20,6 +20,7 @@ interface Message {
   file_url?: string;
   created_at: string;
   is_me: boolean;
+  is_read: boolean;
 }
 
 export default function ChatScreen() {
@@ -32,6 +33,19 @@ export default function ChatScreen() {
   const [uploading, setUploading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
+
+  const markMessagesAsRead = async (matchId: string, currentUserId: string) => {
+    try {
+      await supabase
+        .from('messages')
+        .update({ is_read: true })
+        .eq('match_id', matchId)
+        .neq('sender_id', currentUserId)
+        .eq('is_read', false);
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -62,10 +76,16 @@ export default function ChatScreen() {
         if (error) throw error;
         if (!isMounted) return;
 
-        setMessages(msgs.map(m => ({
+        const formattedMsgs = msgs.map(m => ({
           ...m,
           is_me: m.sender_id === session.user.id
-        })));
+        }));
+        setMessages(formattedMsgs);
+
+        // Oznacz jako przeczytane
+        if (formattedMsgs.some(m => !m.is_me && !m.is_read)) {
+          markMessagesAsRead(id, session.user.id);
+        }
       } catch (error) {
         console.error('Error loading chat:', error);
       } finally {
@@ -95,6 +115,12 @@ export default function ChatScreen() {
         
         setMessages(prev => {
           if (prev.some(m => m.id === newMessage.id)) return prev;
+          
+          // Jeśli wiadomość od kogoś innego, oznacz jako przeczytaną (bo mamy otwarty czat)
+          if (newMessage.sender_id !== userId) {
+            markMessagesAsRead(id, userId);
+          }
+
           return [...prev, {
             ...newMessage,
             is_me: newMessage.sender_id === userId
