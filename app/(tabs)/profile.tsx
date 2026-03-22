@@ -54,6 +54,7 @@ export default function ProfileScreen() {
   const [employerDetails, setEmployerDetails] = useState<EmployerDetails | null>(null);
   const [jobs, setJobs] = useState<JobOffer[]>([]);
   const [showAddJob, setShowAddJob] = useState(false);
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [newJob, setNewJob] = useState({ 
     title: '', 
     salary: '', 
@@ -212,13 +213,18 @@ export default function ProfileScreen() {
         const { data: jobsData, error: jobsError } = await supabase
           .from('jobs')
           .select('*')
-          .eq('employer_id', user.id);
+          .eq('employer_id', user.id)
+          .order('created_at', { ascending: false });
         if (jobsError) throw jobsError;
         setJobs(jobsData.map((j: any) => ({
           id: j.id,
           title: j.title,
           salary: j.salary_range,
           location: j.location_name,
+          description: j.description,
+          required_skills: j.required_skills,
+          lat: j.lat,
+          lng: j.lng,
           matches: 0
         })));
       }
@@ -236,30 +242,59 @@ export default function ProfileScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
-        .from('jobs')
-        .insert({
-          employer_id: user.id,
+      const jobData = {
+        employer_id: user.id,
+        title: newJob.title,
+        salary_range: newJob.salary,
+        location_name: newJob.locationName,
+        lat: newJob.lat,
+        lng: newJob.lng,
+        description: newJob.description,
+        required_skills: newJob.requiredSkills ? (Array.isArray(newJob.requiredSkills) ? newJob.requiredSkills : newJob.requiredSkills.split(',').map(s => s.trim())) : []
+      };
+
+      if (editingJobId) {
+        // Tryb edycji
+        const { error } = await supabase
+          .from('jobs')
+          .update(jobData)
+          .eq('id', editingJobId);
+
+        if (error) throw error;
+
+        setJobs(jobs.map(j => j.id === editingJobId ? {
+          ...j,
           title: newJob.title,
-          salary_range: newJob.salary,
-          location_name: newJob.locationName,
-          lat: newJob.lat,
-          lng: newJob.lng,
+          salary: newJob.salary,
+          location: newJob.locationName,
           description: newJob.description,
-          required_skills: newJob.requiredSkills ? newJob.requiredSkills.split(',').map(s => s.trim()) : []
-        })
-        .select()
-        .single();
+          required_skills: jobData.required_skills
+        } : j));
+        
+        Alert.alert('Sukces', 'Oferta została zaktualizowana.');
+      } else {
+        // Tryb dodawania
+        const { data, error } = await supabase
+          .from('jobs')
+          .insert(jobData)
+          .select()
+          .single();
 
-      if (error) throw error;
+        if (error) throw error;
 
-      setJobs([...jobs, {
-        id: data.id,
-        title: data.title,
-        salary: data.salary_range,
-        location: data.location_name,
-        matches: 0
-      }]);
+        setJobs([{
+          id: data.id,
+          title: data.title,
+          salary: data.salary_range,
+          location: data.location_name,
+          description: data.description,
+          required_skills: data.required_skills,
+          matches: 0
+        }, ...jobs]);
+        
+        Alert.alert('Sukces', 'Oferta pracy została dodana!');
+      }
+
       setNewJob({ 
         title: '', 
         salary: '', 
@@ -269,13 +304,57 @@ export default function ProfileScreen() {
         description: '', 
         requiredSkills: '' 
       });
+      setEditingJobId(null);
       setJobErrors({});
       setShowAddJob(false);
-      Alert.alert('Sukces', 'Oferta pracy została dodana i jest już widoczna dla kandydatów!');
     } catch (error: any) {
-      logger.error('Error adding job', error);
-      Alert.alert('Błąd', 'Nie udało się dodać oferty. Upewnij się, że tabela w bazie danych posiada kolumny description i required_skills.');
+      logger.error('Error saving job', error);
+      Alert.alert('Błąd', 'Nie udało się zapisać oferty.');
     }
+  };
+
+  const handleDeleteJob = async (id: string) => {
+    Alert.alert(
+      'Usuń ofertę',
+      'Czy na pewno chcesz trwale usunąć tę ofertę pracy?',
+      [
+        { text: 'Anuluj', style: 'cancel' },
+        { 
+          text: 'Usuń', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from('jobs')
+                .delete()
+                .eq('id', id);
+
+              if (error) throw error;
+
+              setJobs(jobs.filter(j => j.id !== id));
+              Alert.alert('Sukces', 'Oferta została usunięta.');
+            } catch (error: any) {
+              logger.error('Delete job error', error);
+              Alert.alert('Błąd', 'Nie udało się usunąć oferty.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const openEditJob = (job: any) => {
+    setEditingJobId(job.id);
+    setNewJob({
+      title: job.title,
+      salary: job.salary,
+      locationName: job.location,
+      lat: job.lat || 0,
+      lng: job.lng || 0,
+      description: job.description || '',
+      requiredSkills: Array.isArray(job.required_skills) ? job.required_skills.join(', ') : (job.required_skills || '')
+    });
+    setShowAddJob(true);
   };
 
   const updateSalary = async (newSalary: string) => {
@@ -660,8 +739,19 @@ export default function ProfileScreen() {
                     <Text style={styles.jobLocationText}>{job.location}</Text>
                   </View>
                 </View>
-                <View style={styles.jobMatchesBadge}>
-                  <Text style={styles.jobMatchesText}>{job.matches} Matchy</Text>
+                <View style={styles.jobActions}>
+                  <IconButton 
+                    icon="pencil-outline" 
+                    size={20} 
+                    onPress={() => openEditJob(job)} 
+                    iconColor={Colors.primary}
+                  />
+                  <IconButton 
+                    icon="delete-outline" 
+                    size={20} 
+                    onPress={() => handleDeleteJob(job.id)} 
+                    iconColor={Colors.error}
+                  />
                 </View>
               </Card.Content>
             </Card>
@@ -698,12 +788,22 @@ export default function ProfileScreen() {
       </View>
 
       {/* Modal dodawania oferty */}
-      <Modal visible={showAddJob} onDismiss={() => setShowAddJob(false)} transparent={true} animationType="slide">
+      <Modal visible={showAddJob} onDismiss={() => {
+        setShowAddJob(false);
+        setEditingJobId(null);
+        setNewJob({ title: '', salary: '', locationName: '', lat: 0, lng: 0, description: '', requiredSkills: '' });
+      }} transparent={true} animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text variant="headlineSmall" style={styles.modalTitle}>Nowa oferta pracy</Text>
-              <IconButton icon="close" onPress={() => setShowAddJob(false)} />
+              <Text variant="headlineSmall" style={styles.modalTitle}>
+                {editingJobId ? 'Edytuj ofertę' : 'Nowa oferta pracy'}
+              </Text>
+              <IconButton icon="close" onPress={() => {
+                setShowAddJob(false);
+                setEditingJobId(null);
+                setNewJob({ title: '', salary: '', locationName: '', lat: 0, lng: 0, description: '', requiredSkills: '' });
+              }} />
             </View>
 
             <View>
@@ -802,7 +902,7 @@ export default function ProfileScreen() {
               buttonColor={Colors.primary}
               contentStyle={styles.modalSubmitBtnContent}
             >
-              Opublikuj ofertę
+              {editingJobId ? 'Zapisz zmiany' : 'Opublikuj ofertę'}
             </Button>
           </View>
         </View>
@@ -1132,6 +1232,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_700Bold',
     fontSize: 12,
     color: Colors.primary,
+  },
+  jobActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   noJobsText: {
     textAlign: 'center',
