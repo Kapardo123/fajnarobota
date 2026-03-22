@@ -30,25 +30,37 @@ export default function LocationPicker({
   const [results, setResults] = useState<LocationResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
 
   // Debounce search to avoid too many API calls
   useEffect(() => {
-    let isMounted = true;
     const timer = setTimeout(() => {
-      if (query.length > 2 && showResults && isMounted) {
+      if (query.length > 2 && showResults) {
         searchLocation(query);
       } else {
         setResults([]);
+        setLoading(false);
       }
     }, 500);
 
     return () => {
-      isMounted = false;
       clearTimeout(timer);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, [query, showResults]);
 
   const searchLocation = async (text: string) => {
+    // Przerywamy poprzednie zapytanie, jeśli jeszcze trwa
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Tworzymy nowy kontroler dla bieżącego zapytania
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       setLoading(true);
       // Używamy Nominatim (OpenStreetMap) API - darmowe, nie wymaga klucza
@@ -56,6 +68,7 @@ export default function LocationPicker({
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&countrycodes=pl&addressdetails=1&limit=5&featuretype=settlement`,
         {
+          signal: controller.signal,
           headers: {
             'User-Agent': 'FajnaRobotaApp/1.0'
           }
@@ -63,16 +76,25 @@ export default function LocationPicker({
       );
       const data = await response.json();
       
-      // Filtrujemy duplikaty po place_id (na wszelki wypadek)
-      const uniqueData = data.filter((v: any, i: number, a: any[]) => 
-        a.findIndex(t => t.place_id === v.place_id) === i
-      );
-      
-      setResults(uniqueData);
-    } catch (error) {
+      // Jeśli zapytanie nie zostało przerwane, aktualizujemy wyniki
+      if (!controller.signal.aborted) {
+        // Filtrujemy duplikaty po place_id (na wszelki wypadek)
+        const uniqueData = data.filter((v: any, i: number, a: any[]) => 
+          a.findIndex(t => t.place_id === v.place_id) === i
+        );
+        
+        setResults(uniqueData);
+      }
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        // Ignorujemy błąd przerwania zapytania
+        return;
+      }
       logger.error('Location search error', error);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   };
 
