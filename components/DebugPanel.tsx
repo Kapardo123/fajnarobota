@@ -75,6 +75,7 @@ export default function DebugPanel({ visible, onHide }: DebugPanelProps) {
       case 'warn': return styles.warnChip;
       case 'network': return styles.networkChip;
       case 'debug': return styles.debugChip;
+      case 'action': return styles.actionChip;
       default: return styles.infoChip;
     }
   };
@@ -130,9 +131,9 @@ export default function DebugPanel({ visible, onHide }: DebugPanelProps) {
                 style={styles.segmentedButtons}
                 buttons={[
                   { value: 'all', label: 'All' },
-                  { value: 'error', label: 'Errors' },
-                  { value: 'warn', label: 'Warns' },
-                  { value: 'network', label: 'Net' },
+                  { value: 'action', label: 'Akcje' },
+                  { value: 'error', label: 'Błędy' },
+                  { value: 'network', label: 'Sieć' },
                   { value: 'debug', label: 'Debug' },
                 ]}
               />
@@ -271,6 +272,7 @@ const styles = StyleSheet.create({
   errorChip: { backgroundColor: '#F44336' },
   networkChip: { backgroundColor: '#00BCD4' },
   debugChip: { backgroundColor: '#9C27B0' },
+  actionChip: { backgroundColor: '#2196F3' },
   chipText: { color: '#fff', fontSize: 9, fontWeight: 'bold' },
   timestamp: {
     color: '#666',

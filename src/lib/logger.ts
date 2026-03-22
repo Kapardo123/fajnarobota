@@ -5,7 +5,7 @@ import * as Device from 'expo-device';
 export interface LogEntry {
   id: string;
   timestamp: string;
-  level: 'info' | 'error' | 'warn' | 'network' | 'debug';
+  level: 'info' | 'error' | 'warn' | 'network' | 'debug' | 'action';
   message: string;
   details?: any;
 }
@@ -37,6 +37,10 @@ class Logger {
     this.addLog('debug', message, details);
   }
 
+  action(buttonName: string, details?: any) {
+    this.addLog('action', `Kliknięto przycisk: ${buttonName}`, details);
+  }
+
   private addLog(level: LogEntry['level'], message: string, details?: any) {
     const entry: LogEntry = {
       id: Math.random().toString(36).substring(7),
@@ -55,7 +59,8 @@ class Logger {
         warn: '\x1b[33m', // yellow
         error: '\x1b[31m', // red
         network: '\x1b[36m', // cyan
-        debug: '\x1b[35m'  // magenta
+        debug: '\x1b[35m', // magenta
+        action: '\x1b[34m'  // blue
       }[level];
       console.log(`${color}[${level.toUpperCase()}] ${message}\x1b[0m`, details || '');
     }

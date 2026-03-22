@@ -188,28 +188,40 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
+    logger.info('Użytkownik kliknął przycisk wyloguj');
     Alert.alert(
       'Wyloguj się',
       'Czy na pewno chcesz się wylogować?',
       [
-        { text: 'Anuluj', style: 'cancel' },
+        { text: 'Anuluj', style: 'cancel', onPress: () => logger.info('Anulowano wylogowanie') },
         { 
           text: 'Wyloguj', 
           style: 'destructive',
           onPress: async () => {
             try {
-              // Najpierw wyloguj w Supabase
-              await supabase.auth.signOut();
+              logger.info('Rozpoczynanie procesu wylogowania');
               
-              // Czyścimy stan lokalny (opcjonalnie, bo i tak przekierowujemy)
+              // 1. Wyloguj w Supabase
+              const { error } = await supabase.auth.signOut();
+              if (error) {
+                logger.error('Błąd podczas signOut w Supabase', error);
+                throw error;
+              }
+              
+              logger.info('Supabase signOut zakończony pomyślnie');
+              
+              // 2. Czyścimy stan lokalny
               setProfile(null);
               setCandidateDetails(null);
               setEmployerDetails(null);
               
-              // Przekierowanie do strony głównej (Landing) - używamy ścieżki absolutnej
+              // 3. Przekierowanie wymuszone (replace) do root
+              logger.info('Przekierowanie do strony głównej');
               router.replace('/');
+              
             } catch (error: any) {
-              console.error('Logout error:', error.message);
+              logger.error('Krytyczny błąd wylogowania', { message: error.message });
+              Alert.alert('Błąd', 'Wystąpił problem podczas wylogowywania. Przekierowujemy do startu.');
               router.replace('/');
             }
           }
@@ -219,6 +231,7 @@ export default function ProfileScreen() {
   };
 
   const updateSalary = async (newSalary: string) => {
+    logger.action('Wybór wynagrodzenia', { salary: newSalary });
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -247,8 +260,9 @@ export default function ProfileScreen() {
   };
 
   const updateLocation = async () => {
-    if (!locationInput.trim()) {
-      Alert.alert('Błąd', 'Wprowadź nazwę miejscowości.');
+      logger.action('Zapis lokalizacji', { location: locationInput });
+      if (!locationInput.trim()) {
+        Alert.alert('Błąd', 'Wprowadź nazwę miejscowości.');
       return;
     }
     
@@ -420,7 +434,7 @@ export default function ProfileScreen() {
             onPress={() => setIsEditingSalary(true)}
           />
           <List.Item
-            title="Lokalizacja firmy"
+            title="Lokalizacja"
             description={profile?.location_name || 'Nie ustawiono'}
             left={props => <List.Icon {...props} icon="map-marker" color={Colors.primary} />}
             right={props => <List.Icon {...props} icon="pencil-outline" color={Colors.textLight} />}
@@ -485,7 +499,7 @@ export default function ProfileScreen() {
             title="Wyloguj się"
             left={props => <List.Icon {...props} icon="logout" color={Colors.error} />}
             titleStyle={{ color: Colors.error, fontFamily: 'Montserrat_700Bold' }}
-            onPress={() => handleLogout()}
+            onPress={handleLogout}
           />
         </List.Section>
       </View>
