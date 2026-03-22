@@ -12,4 +12,5 @@ export const Colors = {
   matchScore: '#00C853',
   badge: '#2196F3',
   xpBar: '#FFD700',
+  secondary: '#FF9800', // Pomarańczowy dla kontrastu
 };

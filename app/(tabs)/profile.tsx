@@ -16,6 +16,10 @@ interface JobOffer {
   title: string;
   salary: string;
   location: string;
+  description?: string;
+  required_skills?: string[];
+  lat?: number;
+  lng?: number;
   matches: number;
 }
 
