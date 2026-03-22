@@ -30,7 +30,24 @@ interface CardData {
   description?: string;
   experience?: string;
   experienceHistory?: any[];
+  locationName?: string;
+  lat?: number;
+  lng?: number;
 }
+
+// Haversine formula to calculate distance between two points in km
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const d = R * c; // Distance in km
+  return Math.round(d);
+};
 
 export default function SwipeScreen() {
   const [index, setIndex] = useState(0);
@@ -123,6 +140,9 @@ export default function SwipeScreen() {
                 { icon: 'briefcase-outline', text: 'Stacjonarnie' },
               ],
               isVerified: employer?.employers?.[0]?.is_verified || false,
+              locationName: job.location_name,
+              lat: job.lat,
+              lng: job.lng,
             };
           });
           setCards(jobCards);
@@ -134,7 +154,7 @@ export default function SwipeScreen() {
         // Pracodawca widzi kandydatów, których jeszcze nie ocenił
         let query = supabase
           .from('candidates')
-          .select('*, profiles(full_name, avatar_url, employers(is_verified))');
+          .select('*, profiles(full_name, avatar_url, location_name, lat, lng, employers(is_verified))');
         
         if (swipedIds.length > 0) {
           query = query.not('id', 'in', `(${swipedIds.join(',')})`);
@@ -155,6 +175,9 @@ export default function SwipeScreen() {
             isBlurred: cand.blind_hiring,
             bio: cand.bio,
             experienceHistory: cand.experience_history,
+            locationName: cand.profiles?.location_name,
+            lat: cand.profiles?.lat,
+            lng: cand.profiles?.lng,
           }));
           setCards(candidateCards);
         }
@@ -308,16 +331,20 @@ export default function SwipeScreen() {
         >
           {/* TOP SECTION */}
           <View style={styles.topBadgesRow}>
-            {item.matchScore ? (
-              <View style={styles.matchBadgeModern}>
-                <MaterialCommunityIcons name="flash" size={14} color={Colors.primary} />
-                <Text style={styles.matchTextModern}>{item.matchScore}% DOPASOWANIA</Text>
-              </View>
-            ) : <View />}
+            <View style={styles.matchBadgeModern}>
+              <MaterialCommunityIcons name="map-marker" size={14} color={Colors.primary} />
+              <Text style={styles.matchTextModern}>
+                {item.locationName?.split(',')[0].toUpperCase() || 'LOKALIZACJA'}
+              </Text>
+            </View>
             
             <View style={styles.distanceBadgeModern}>
               <MaterialCommunityIcons name="map-marker-distance" size={14} color="#fff" />
-              <Text style={styles.distanceTextModern}>W TWOJEJ OKOLICY</Text>
+              <Text style={styles.distanceTextModern}>
+                {userProfile?.lat && item.lat 
+                  ? `${calculateDistance(userProfile.lat, userProfile.lng, item.lat, item.lng)} KM STĄD` 
+                  : 'W TWOJEJ OKOLICY'}
+              </Text>
             </View>
           </View>
           
