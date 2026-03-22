@@ -225,14 +225,28 @@ export default function ChatScreen() {
 
   const handleFilePreview = async (url: string, fileName: string) => {
     try {
+      // Wykorzystujemy Google Docs Viewer API do podglądu PDF bezpośrednio w aplikacji
+      // bez konieczności pobierania pliku na telefon użytkownika
+      const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+      
       if (Platform.OS === 'web') {
-        window.open(url, '_blank');
+        window.open(googleViewerUrl, '_blank');
       } else {
-        await WebBrowser.openBrowserAsync(url);
+        await WebBrowser.openBrowserAsync(googleViewerUrl, {
+          toolbarColor: Colors.primary,
+          enableBarCollapsing: true,
+          showTitle: true,
+          dismissButtonStyle: 'close'
+        });
       }
     } catch (error) {
       console.error('Error previewing file:', error);
-      Alert.alert('Błąd', 'Nie można otworzyć pliku.');
+      // Fallback do bezpośredniego linku jeśli Viewer zawiedzie
+      try {
+        await WebBrowser.openBrowserAsync(url);
+      } catch (innerError) {
+        Alert.alert('Błąd', 'Nie można otworzyć podglądu pliku.');
+      }
     }
   };
 
