@@ -7,6 +7,8 @@ import { useState, useEffect } from 'react';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase, uploadAvatar } from '../../src/lib/supabase';
+import { showDebugPanel } from '../_layout';
+import { logger } from '../../src/lib/logger';
 
 interface JobOffer {
   id: string;
@@ -468,6 +470,14 @@ export default function ProfileScreen() {
           <List.Item
             title="Pomoc i Wsparcie"
             left={props => <List.Icon {...props} icon="help-circle" color={Colors.primary} />}
+          />
+          <List.Item
+            title="Panel Debugowania"
+            left={props => <List.Icon {...props} icon="bug" color={Colors.textLight} />}
+            onPress={() => {
+              logger.info('Debug panel opened manually');
+              showDebugPanel();
+            }}
           />
           <List.Item
             title="Wyloguj się"

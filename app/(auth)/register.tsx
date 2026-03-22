@@ -8,6 +8,7 @@ import { Config } from '../../constants/Config';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase, uploadAvatar } from '../../src/lib/supabase';
+import { logger } from '../../src/lib/logger';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -149,6 +150,7 @@ export default function RegisterScreen() {
       }
 
       Alert.alert('Błąd rejestracji', errorMessage);
+      logger.error('Registration failed', { error, status: error.status, message: error.message });
     } finally {
       setLoading(false);
     }

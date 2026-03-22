@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Colors } from '../../constants/Colors';
 import { Config } from '../../constants/Config';
 import { supabase } from '../../src/lib/supabase';
+import { logger } from '../../src/lib/logger';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -44,7 +45,10 @@ export default function SwipeScreen() {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        logger.warn('No user found in fetchData');
+        return;
+      }
 
       const { data: profile } = await supabase
         .from('profiles')
@@ -52,7 +56,13 @@ export default function SwipeScreen() {
         .eq('id', user.id)
         .single();
       
+      if (!profile) {
+        logger.error('Profile not found for user', { userId: user.id });
+        return;
+      }
+      
       setUserProfile(profile);
+      logger.info('User profile loaded', { role: profile.role, location: profile.location_name });
 
       // Pobierz ID już przesuniętych kart
       const { data: swiped } = await supabase
@@ -71,7 +81,12 @@ export default function SwipeScreen() {
             radius_km: searchRadius
           });
         
-        if (jobsError) throw jobsError;
+        if (jobsError) {
+          logger.error('Error fetching jobs within radius', jobsError);
+          throw jobsError;
+        }
+
+        logger.info(`Fetched ${jobs?.length || 0} jobs within radius ${searchRadius}km`);
 
         // Filtruj już swipe'owane
         if (swipedIds.length > 0) {
@@ -133,7 +148,8 @@ export default function SwipeScreen() {
           setCards(candidateCards);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      logger.error('Error fetching swipe data', error);
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);

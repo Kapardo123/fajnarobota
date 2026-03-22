@@ -1,5 +1,10 @@
 import { Stack } from 'expo-router';
 import { PaperProvider, MD3LightTheme, configureFonts } from 'react-native-paper';
+import { useState } from 'react';
+import DebugPanel from '../components/DebugPanel';
+
+// Eksportujemy funkcję do otwierania panelu globalnie (uproszczenie dla prototypu)
+export let showDebugPanel: () => void = () => {};
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts, Montserrat_400Regular, Montserrat_700Bold, Montserrat_900Black } from '@expo-google-fonts/montserrat';
 import * as SplashScreen from 'expo-splash-screen';
@@ -17,6 +22,9 @@ const theme = {
 };
 
 export default function RootLayout() {
+  const [debugVisible, setDebugVisible] = useState(false);
+  showDebugPanel = () => setDebugVisible(true);
+
   const [loaded, error] = useFonts({
     Montserrat_400Regular,
     Montserrat_700Bold,
@@ -41,6 +49,7 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
         </Stack>
+        <DebugPanel visible={debugVisible} onHide={() => setDebugVisible(false)} />
       </PaperProvider>
     </GestureHandlerRootView>
   );
