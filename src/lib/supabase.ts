@@ -18,14 +18,13 @@ export const uploadAvatar = async (uri: string, userId: string) => {
   try {
     const response = await fetch(uri);
     const blob = await response.blob();
-    const arrayBuffer = await new Response(blob).arrayBuffer();
     
     const fileName = `${userId}/${Date.now()}.jpg`;
     const filePath = `${fileName}`;
 
     const { data, error } = await supabase.storage
       .from('avatars')
-      .upload(filePath, arrayBuffer, {
+      .upload(filePath, blob, {
         contentType: 'image/jpeg',
         upsert: true
       });

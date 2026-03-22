@@ -198,8 +198,15 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { error } = await supabase.auth.signOut();
-              if (error) throw error;
+              // Najpierw wyloguj w Supabase
+              await supabase.auth.signOut();
+              
+              // Czyścimy stan lokalny (opcjonalnie, bo i tak przekierowujemy)
+              setProfile(null);
+              setCandidateDetails(null);
+              setEmployerDetails(null);
+              
+              // Przekierowanie do strony głównej (Landing) - używamy ścieżki absolutnej
               router.replace('/');
             } catch (error: any) {
               console.error('Logout error:', error.message);
@@ -222,32 +229,35 @@ export default function ProfileScreen() {
           .update({ salary_expectation: newSalary })
           .eq('id', user.id);
         if (error) throw error;
-        setCandidateDetails(prev => prev ? { ...prev, salary_expectation: newSalary } : null);
+        setCandidateDetails(prev => ({ ...prev!, salary_expectation: newSalary }));
       } else {
         const { error } = await supabase
           .from('employers')
           .update({ average_salary: newSalary })
           .eq('id', user.id);
         if (error) throw error;
-        setEmployerDetails(prev => prev ? { ...prev, average_salary: newSalary } : null);
+        setEmployerDetails(prev => ({ ...prev!, average_salary: newSalary }));
       }
       setIsEditingSalary(false);
       Alert.alert('Sukces', 'Wynagrodzenie zostało zaktualizowane.');
     } catch (error: any) {
+      console.error('Update salary error:', error);
       Alert.alert('Błąd', 'Nie udało się zaktualizować wynagrodzenia.');
     }
   };
 
   const updateLocation = async () => {
-    if (!locationInput.trim()) return;
+    if (!locationInput.trim()) {
+      Alert.alert('Błąd', 'Wprowadź nazwę miejscowości.');
+      return;
+    }
     
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // W prawdziwej aplikacji użylibyśmy tutaj API do geokodowania (np. Google Maps lub OpenStreetMap)
-      // Na potrzeby prototypu symulujemy losowe współrzędne dla wpisanej nazwy
+      // Symulacja geokodowania
       const mockLat = 52.2297 + (Math.random() - 0.5) * 0.5;
       const mockLng = 21.0122 + (Math.random() - 0.5) * 0.5;
 
@@ -262,10 +272,11 @@ export default function ProfileScreen() {
 
       if (error) throw error;
 
-      setProfile(prev => prev ? { ...prev, location_name: locationInput, lat: mockLat, lng: mockLng } : null);
+      setProfile(prev => ({ ...prev!, location_name: locationInput, lat: mockLat, lng: mockLng }));
       setIsEditingLocation(false);
       Alert.alert('Sukces', 'Lokalizacja została zaktualizowana.');
     } catch (error: any) {
+      console.error('Update location error:', error);
       Alert.alert('Błąd', 'Nie udało się zaktualizować lokalizacji.');
     } finally {
       setLoading(false);
@@ -459,7 +470,7 @@ export default function ProfileScreen() {
   );
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {profile?.role === 'candidate' ? renderCandidateProfile() : renderEmployerProfile()}
 
       <View style={styles.section}>
@@ -611,6 +622,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  contentContainer: {
+    paddingBottom: 40,
   },
   centered: {
     justifyContent: 'center',
