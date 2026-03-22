@@ -1,5 +1,5 @@
 import { View, StyleSheet, Dimensions, Animated, PanResponder, ImageBackground, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { Card, Text, Button, Chip, IconButton, Portal, Dialog, Modal } from 'react-native-paper';
+import { Card, Text, Button, Chip, IconButton, Portal, Dialog } from 'react-native-paper';
 import { useState, useRef, useEffect } from 'react';
 import { Colors } from '../../constants/Colors';
 import { Config } from '../../constants/Config';
@@ -8,6 +8,7 @@ import { logger } from '../../src/lib/logger';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import MatchModal from '../../components/MatchModal';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -29,6 +30,7 @@ interface CardData {
 export default function SwipeScreen() {
   const [index, setIndex] = useState(0);
   const [matchVisible, setMatchVisible] = useState(false);
+  const [matchedItem, setMatchedItem] = useState<CardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<CardData[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -248,6 +250,7 @@ export default function SwipeScreen() {
           // Zapisz Match w bazie
           const { error: matchError } = await supabase.from('matches').insert(matchData);
           if (!matchError) {
+            setMatchedItem(item);
             setMatchVisible(true);
           }
         }
@@ -394,41 +397,17 @@ export default function SwipeScreen() {
         </View>
       )}
 
-      <Portal>
-        <Modal visible={matchVisible} onDismiss={() => setMatchVisible(false)} contentContainerStyle={styles.matchModal}>
-          <View style={styles.matchContainer}>
-            <Text style={styles.matchTitle}>FAJNA ROBOTA! 🤩</Text>
-            
-            <View style={styles.matchAvatars}>
-              {index < cards.length && (
-                <>
-                  <View style={styles.avatarCircle}>
-                    <Image source={{ uri: userProfile?.avatar_url }} style={styles.avatarImg} />
-                  </View>
-                  <View style={[styles.avatarCircle, styles.avatarOverlap]}>
-                    <Image source={{ uri: cards[index].image }} style={styles.avatarImg} />
-                  </View>
-                </>
-              )}
-            </View>
-
-            <Button
-              mode="contained"
-              onPress={() => {
-                setMatchVisible(false);
-                router.push('/(tabs)/inbox');
-              }}
-              style={styles.matchActionBtn}
-              buttonColor={Colors.primary}
-            >
-              Napisz pierwszą wiadomość
-            </Button>
-            <Button onPress={() => setMatchVisible(false)} textColor="#fff">
-              Swipe'uj dalej
-            </Button>
-          </View>
-        </Modal>
-      </Portal>
+      <MatchModal
+        visible={matchVisible}
+        onHide={() => setMatchVisible(false)}
+        onSendMessage={() => {
+          setMatchVisible(false);
+          router.push('/(tabs)/inbox');
+        }}
+        userAvatar={userProfile?.avatar_url || Config.DEFAULT_CANDIDATE_PHOTO}
+        targetAvatar={matchedItem?.image || ''}
+        targetName={matchedItem?.title?.split(',')[0] || ''}
+      />
 
       <Portal>
         <Dialog visible={showRadiusDialog} onDismiss={() => setShowRadiusDialog(false)} style={{ backgroundColor: Colors.surface }}>
@@ -583,51 +562,6 @@ const styles = StyleSheet.create({
   },
   refreshBtn: {
     borderRadius: 12,
-  },
-  matchModal: {
-    backgroundColor: 'rgba(255,255,255,0.98)',
-    margin: 0,
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  matchContainer: {
-    alignItems: 'center',
-    width: '100%',
-    padding: 40,
-  },
-  matchTitle: {
-    fontSize: 36,
-    fontFamily: 'Montserrat_900Black',
-    color: Colors.text,
-    textAlign: 'center',
-    marginBottom: 40,
-  },
-  matchAvatars: {
-    flexDirection: 'row',
-    marginBottom: 60,
-  },
-  avatarCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 4,
-    borderColor: '#fff',
-    overflow: 'hidden',
-    backgroundColor: '#eee',
-  },
-  avatarOverlap: {
-    marginLeft: -40,
-  },
-  avatarImg: {
-    width: '100%',
-    height: '100%',
-  },
-  matchActionBtn: {
-    width: '100%',
-    paddingVertical: 8,
-    borderRadius: 16,
-    marginBottom: 16,
   },
   chipContainer: {
     flexDirection: 'row',

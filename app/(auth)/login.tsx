@@ -14,12 +14,29 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{email?: string, password?: string}>({});
+
+  const validate = () => {
+    const newErrors: {email?: string, password?: string} = {};
+    
+    if (!email) {
+      newErrors.email = 'E-mail jest wymagany';
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'Niepoprawny format e-mail';
+    }
+
+    if (!password) {
+      newErrors.password = 'Hasło jest wymagane';
+    } else if (password.length < 6) {
+      newErrors.password = 'Hasło musi mieć min. 6 znaków';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Błąd', 'Wypełnij wszystkie pola.');
-      return;
-    }
+    if (!validate()) return;
 
     try {
       setLoading(true);
@@ -32,13 +49,18 @@ export default function LoginScreen() {
 
       if (error) {
         logger.error('Błąd logowania Supabase', error);
+        if (error.message.includes('Invalid login credentials')) {
+          setErrors({ email: 'Błędny e-mail lub hasło' });
+        }
         throw error;
       }
       
       logger.info('Zalogowano pomyślnie', { userId: data.user?.id });
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Błąd logowania', error.message);
+      if (!error.message.includes('Invalid login credentials')) {
+        Alert.alert('Błąd logowania', error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -61,34 +83,49 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.form}>
-            <TextInput
-              label="E-mail"
-              value={email}
-              onChangeText={setEmail}
-              mode="outlined"
-              style={styles.input}
-              outlineColor={Colors.border}
-              activeOutlineColor={Colors.primary}
-              left={<TextInput.Icon icon="email-outline" color={Colors.textLight} />}
-            />
-            <TextInput
-              label="Hasło"
-              value={password}
-              onChangeText={setPassword}
-              mode="outlined"
-              secureTextEntry={secureText}
-              style={styles.input}
-              outlineColor={Colors.border}
-              activeOutlineColor={Colors.primary}
-              left={<TextInput.Icon icon="lock-outline" color={Colors.textLight} />}
-              right={
-                <TextInput.Icon 
-                  icon={secureText ? "eye-outline" : "eye-off-outline"} 
-                  onPress={() => setSecureText(!secureText)}
-                  color={Colors.textLight}
-                />
-              }
-            />
+            <View>
+              <TextInput
+                label="E-mail"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (errors.email) setErrors({...errors, email: undefined});
+                }}
+                mode="outlined"
+                error={!!errors.email}
+                style={styles.input}
+                outlineColor={Colors.border}
+                activeOutlineColor={Colors.primary}
+                left={<TextInput.Icon icon="email-outline" color={errors.email ? Colors.error : Colors.textLight} />}
+              />
+              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+            </View>
+
+            <View>
+              <TextInput
+                label="Hasło"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errors.password) setErrors({...errors, password: undefined});
+                }}
+                mode="outlined"
+                error={!!errors.password}
+                secureTextEntry={secureText}
+                style={styles.input}
+                outlineColor={Colors.border}
+                activeOutlineColor={Colors.primary}
+                left={<TextInput.Icon icon="lock-outline" color={errors.password ? Colors.error : Colors.textLight} />}
+                right={
+                  <TextInput.Icon 
+                    icon={secureText ? "eye-outline" : "eye-off-outline"} 
+                    onPress={() => setSecureText(!secureText)}
+                    color={Colors.textLight}
+                  />
+                }
+              />
+              {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+            </View>
             
             <TouchableOpacity style={styles.forgotPassword}>
               <Text style={styles.forgotPasswordText}>Zapomniałeś hasła?</Text>
@@ -187,6 +224,13 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: Colors.surface,
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: 12,
+    fontFamily: 'Montserrat_400Regular',
+    marginTop: 4,
+    marginLeft: 4,
   },
   forgotPassword: {
     alignSelf: 'flex-end',

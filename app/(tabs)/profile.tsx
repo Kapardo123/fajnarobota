@@ -50,7 +50,21 @@ export default function ProfileScreen() {
   const [employerDetails, setEmployerDetails] = useState<EmployerDetails | null>(null);
   const [jobs, setJobs] = useState<JobOffer[]>([]);
   const [showAddJob, setShowAddJob] = useState(false);
-  const [newJob, setNewJob] = useState({ title: '', salary: '', locationName: '', lat: 0, lng: 0 });
+  const [newJob, setNewJob] = useState({ 
+    title: '', 
+    salary: '', 
+    locationName: '', 
+    lat: 0, 
+    lng: 0,
+    description: '',
+    requiredSkills: '' 
+  });
+  const [jobErrors, setJobErrors] = useState<{
+    title?: string, 
+    salary?: string, 
+    location?: string,
+    description?: string
+  }>({});
   const [isEditingSalary, setIsEditingSalary] = useState(false);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -58,6 +72,39 @@ export default function ProfileScreen() {
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  const validateJob = () => {
+    const errors: {title?: string, salary?: string, location?: string, description?: string} = {};
+    
+    if (!newJob.title.trim()) {
+      errors.title = 'Tytuł stanowiska jest wymagany';
+    } else if (newJob.title.length < 3) {
+      errors.title = 'Tytuł jest za krótki (min. 3 znaki)';
+    }
+
+    if (!newJob.salary.trim()) {
+      errors.salary = 'Podaj kwotę wynagrodzenia';
+    } else if (newJob.salary.toLowerCase() === 'do uzgodnienia') {
+      // Akceptujemy tę frazę
+    } else if (!/\d/.test(newJob.salary)) {
+      errors.salary = 'Kwota musi zawierać cyfry';
+    } else if (!newJob.salary.toLowerCase().includes('pln')) {
+      errors.salary = 'Dodaj walutę (np. PLN) lub wpisz "Do uzgodnienia"';
+    }
+
+    if (!newJob.locationName || !newJob.lat) {
+      errors.location = 'Wybierz miejscowość z listy podpowiedzi';
+    }
+
+    if (!newJob.description.trim()) {
+      errors.description = 'Opis stanowiska jest wymagany';
+    } else if (newJob.description.length < 20) {
+      errors.description = 'Opis musi mieć przynajmniej 20 znaków';
+    }
+    
+    setJobErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleLogout = async () => {
     logger.action('Wyloguj (Hard Reset)');
@@ -169,47 +216,56 @@ export default function ProfileScreen() {
   };
 
   const handleAddJob = async () => {
-    if (newJob.title && newJob.salary && newJob.locationName && newJob.lat) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+    if (!validateJob()) return;
 
-        const { data, error } = await supabase
-          .from('jobs')
-          .insert({
-            employer_id: user.id,
-            title: newJob.title,
-            salary_range: newJob.salary,
-            location_name: newJob.locationName,
-            lat: newJob.lat,
-            lng: newJob.lng,
-          })
-          .select()
-          .single();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-        if (error) throw error;
+      const { data, error } = await supabase
+        .from('jobs')
+        .insert({
+          employer_id: user.id,
+          title: newJob.title,
+          salary_range: newJob.salary,
+          location_name: newJob.locationName,
+          lat: newJob.lat,
+          lng: newJob.lng,
+          description: newJob.description,
+          required_skills: newJob.requiredSkills ? newJob.requiredSkills.split(',').map(s => s.trim()) : []
+        })
+        .select()
+        .single();
 
-        setJobs([...jobs, {
-          id: data.id,
-          title: data.title,
-          salary: data.salary_range,
-          location: data.location_name,
-          matches: 0
-        }]);
-        setNewJob({ title: '', salary: '', locationName: '', lat: 0, lng: 0 });
-        setShowAddJob(false);
-        Alert.alert('Sukces', 'Oferta pracy została dodana.');
-      } catch (error: any) {
-        logger.error('Error adding job', error);
-        Alert.alert('Błąd', 'Nie udało się dodać oferty.');
-      }
-    } else {
-      Alert.alert('Błąd', 'Wypełnij wszystkie pola i wybierz lokalizację z listy.');
+      if (error) throw error;
+
+      setJobs([...jobs, {
+        id: data.id,
+        title: data.title,
+        salary: data.salary_range,
+        location: data.location_name,
+        matches: 0
+      }]);
+      setNewJob({ 
+        title: '', 
+        salary: '', 
+        locationName: '', 
+        lat: 0, 
+        lng: 0, 
+        description: '', 
+        requiredSkills: '' 
+      });
+      setJobErrors({});
+      setShowAddJob(false);
+      Alert.alert('Sukces', 'Oferta pracy została dodana i jest już widoczna dla kandydatów!');
+    } catch (error: any) {
+      logger.error('Error adding job', error);
+      Alert.alert('Błąd', 'Nie udało się dodać oferty. Upewnij się, że tabela w bazie danych posiada kolumny description i required_skills.');
     }
   };
 
   const updateSalary = async (newSalary: string) => {
-    logger.action('Wybór wynagrodzenia', { salary: newSalary });
+    logger.action('Wybór wynagrodzenia', { salary: newSalary, role: profile?.role });
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -220,19 +276,19 @@ export default function ProfileScreen() {
           .update({ salary_expectation: newSalary })
           .eq('id', user.id);
         if (error) throw error;
-        setCandidateDetails(prev => ({ ...prev!, salary_expectation: newSalary }));
+        setCandidateDetails(prev => prev ? { ...prev, salary_expectation: newSalary } : null);
       } else {
         const { error } = await supabase
           .from('employers')
           .update({ average_salary: newSalary })
           .eq('id', user.id);
         if (error) throw error;
-        setEmployerDetails(prev => ({ ...prev!, average_salary: newSalary }));
+        setEmployerDetails(prev => prev ? { ...prev, average_salary: newSalary } : null);
       }
       setIsEditingSalary(false);
       Alert.alert('Sukces', 'Wynagrodzenie zostało zaktualizowane.');
     } catch (error: any) {
-      console.error('Update salary error:', error);
+      logger.error('Update salary error', error);
       Alert.alert('Błąd', 'Nie udało się zaktualizować wynagrodzenia.');
     }
   };
@@ -479,27 +535,93 @@ export default function ProfileScreen() {
               <IconButton icon="close" onPress={() => setShowAddJob(false)} />
             </View>
 
+            <View>
+              <TextInput
+                label="Nazwa stanowiska"
+                value={newJob.title}
+                onChangeText={(text) => {
+                  setNewJob({...newJob, title: text});
+                  if (jobErrors.title) setJobErrors({...jobErrors, title: undefined});
+                }}
+                mode="outlined"
+                error={!!jobErrors.title}
+                style={styles.modalInput}
+                outlineColor={Colors.border}
+                activeOutlineColor={Colors.primary}
+              />
+              {jobErrors.title && <Text style={styles.errorText}>{jobErrors.title}</Text>}
+            </View>
+
+            <View>
+              <TextInput
+                label="Widełki płacowe (np. 30-40 PLN/h)"
+                value={newJob.salary}
+                onChangeText={(text) => {
+                  setNewJob({...newJob, salary: text});
+                  if (jobErrors.salary) setJobErrors({...jobErrors, salary: undefined});
+                }}
+                mode="outlined"
+                error={!!jobErrors.salary}
+                style={styles.modalInput}
+                outlineColor={Colors.border}
+                activeOutlineColor={Colors.primary}
+                right={
+                  <TextInput.Icon 
+                    icon="hand-coin-outline" 
+                    onPress={() => setNewJob({...newJob, salary: 'Do uzgodnienia'})}
+                  />
+                }
+              />
+              {jobErrors.salary && <Text style={styles.errorText}>{jobErrors.salary}</Text>}
+              <TouchableOpacity 
+                onPress={() => setNewJob({...newJob, salary: 'Do uzgodnienia'})}
+                style={{ marginTop: 4, marginLeft: 4 }}
+              >
+                <Text style={{ color: Colors.primary, fontSize: 12 }}>Ustaw "Do uzgodnienia"</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View>
+              <LocationPicker 
+                label="Lokalizacja"
+                onLocationSelect={(loc) => {
+                  setNewJob({ ...newJob, locationName: loc.name, lat: loc.lat, lng: loc.lng });
+                  if (jobErrors.location) setJobErrors({...jobErrors, location: undefined});
+                }}
+                placeholder="Lokalizacja oferty..."
+              />
+              {jobErrors.location && <Text style={styles.errorText}>{jobErrors.location}</Text>}
+            </View>
+
+            <View>
+              <TextInput
+                label="Opis stanowiska"
+                value={newJob.description}
+                onChangeText={(text) => {
+                  setNewJob({...newJob, description: text});
+                  if (jobErrors.description) setJobErrors({...jobErrors, description: undefined});
+                }}
+                mode="outlined"
+                error={!!jobErrors.description}
+                multiline
+                numberOfLines={4}
+                style={styles.modalInput}
+                outlineColor={Colors.border}
+                activeOutlineColor={Colors.primary}
+                placeholder="Napisz czego oczekujesz od pracownika..."
+              />
+              {jobErrors.description && <Text style={styles.errorText}>{jobErrors.description}</Text>}
+            </View>
+
             <TextInput
-              label="Nazwa stanowiska"
-              value={newJob.title}
-              onChangeText={(text) => setNewJob({...newJob, title: text})}
+              label="Wymagane umiejętności (opcjonalnie, po przecinku)"
+              value={newJob.requiredSkills}
+              onChangeText={(text) => setNewJob({...newJob, requiredSkills: text})}
               mode="outlined"
               style={styles.modalInput}
               outlineColor={Colors.border}
               activeOutlineColor={Colors.primary}
-            />
-            <TextInput
-              label="Widełki płacowe (np. 30-40 PLN/h)"
-              value={newJob.salary}
-              onChangeText={(text) => setNewJob({...newJob, salary: text})}
-              mode="outlined"
-              style={styles.modalInput}
-              outlineColor={Colors.border}
-              activeOutlineColor={Colors.primary}
-            />
-            <LocationPicker 
-              onLocationSelect={(loc) => setNewJob({ ...newJob, locationName: loc.name, lat: loc.lat, lng: loc.lng })}
-              placeholder="Lokalizacja oferty..."
+              placeholder="np. Prawo jazdy, Angielski, Punktualność"
             />
 
             <Button 
@@ -527,7 +649,13 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.chipContainer}>
-              {Config.SALARY_RANGES.map(range => (
+              {Config.SALARY_RANGES
+                .filter(range => 
+                  profile?.role === 'candidate' 
+                  ? range !== 'Do uzgodnienia' 
+                  : range !== 'Jeszcze nie wiem'
+                )
+                .map(range => (
                 <Chip 
                   key={range}
                   selected={
@@ -567,6 +695,7 @@ export default function ProfileScreen() {
             </View>
 
             <LocationPicker 
+              label="Miasto / Miejscowość"
               onLocationSelect={updateLocation}
               placeholder="Wyszukaj miasto..."
             />
@@ -759,6 +888,13 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     fontFamily: 'Montserrat_400Regular',
     padding: 20,
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: 12,
+    fontFamily: 'Montserrat_400Regular',
+    marginTop: 4,
+    marginLeft: 4,
   },
   logoutBtn: {
     marginHorizontal: 16,

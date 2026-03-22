@@ -20,6 +20,7 @@ export default function RegisterScreen() {
   // Auth data
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState<any>({});
   
   // Candidate data
   const [candidateData, setCandidateData] = useState({
@@ -51,7 +52,6 @@ export default function RegisterScreen() {
 
   const SKILLS_LIST = ['Gastronomia', 'Barista', 'Sprzedawca', 'Obsługa klienta', 'Magazynier', 'Student', 'Angielski B2', 'Kierowca'];
   const SUPERPOWERS = ['#OgarniamChaos', '#NigdyNieSpóźniony', '#MistrzExcela', '#UśmiechNaTwarzy', '#SzybkiJakBłyskawica'];
-  const SALARY_RANGES = ['25-30 PLN/h', '30-35 PLN/h', '35-40 PLN/h', '40-45 PLN/h', '45-50 PLN/h', '50-60 PLN/h', '60+ PLN/h'];
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -167,7 +167,61 @@ export default function RegisterScreen() {
     }
   };
 
+  const validateStep = () => {
+    const newErrors: any = {};
+    
+    if (step === 2) {
+      if (!email) {
+        newErrors.email = 'E-mail jest wymagany';
+      } else if (!/\S+@\S+\.\S+/.test(email)) {
+        newErrors.email = 'Niepoprawny format e-mail';
+      }
+      
+      if (!password) {
+        newErrors.password = 'Hasło jest wymagane';
+      } else if (password.length < 6) {
+        newErrors.password = 'Hasło musi mieć min. 6 znaków';
+      } else if (!/\d/.test(password)) {
+        newErrors.password = 'Hasło musi zawierać przynajmniej jedną cyfrę';
+      }
+    }
+
+    if (step === 3) {
+      if (role === 'candidate') {
+        if (!candidateData.name.trim()) newErrors.name = 'Imię i nazwisko jest wymagane';
+        if (!candidateData.age) {
+          newErrors.age = 'Wiek jest wymagany';
+        } else {
+          const ageNum = parseInt(candidateData.age);
+          if (isNaN(ageNum) || ageNum < 16 || ageNum > 99) {
+            newErrors.age = 'Wiek musi być między 16 a 99';
+          }
+        }
+        if (!candidateData.locationName) newErrors.location = 'Wybierz miejscowość';
+        if (!candidateData.salary) newErrors.salary = 'Wybierz oczekiwania finansowe';
+      } else {
+        if (!employerData.companyName.trim()) newErrors.companyName = 'Nazwa firmy jest wymagana';
+        if (!employerData.locationName) newErrors.location = 'Wybierz miejscowość';
+        if (!employerData.salaryRange) newErrors.salary = 'Wybierz wynagrodzenie';
+        if (!employerData.description.trim()) {
+          newErrors.description = 'Opis jest wymagany';
+        } else if (employerData.description.length < 20) {
+          newErrors.description = 'Opis musi mieć min. 20 znaków';
+        }
+      }
+    }
+
+    if (step === 4 && role === 'candidate') {
+      if (candidateData.skills.length === 0) newErrors.skills = 'Wybierz przynajmniej jedną umiejętność';
+      if (!candidateData.superpower) newErrors.superpower = 'Wybierz swoją supermoc';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleNext = () => {
+    if (!validateStep()) return;
     const maxSteps = role === 'candidate' ? 5 : 4;
     if (step < maxSteps) {
       setStep(step + 1);
@@ -244,27 +298,41 @@ export default function RegisterScreen() {
             <Text style={styles.stepTitle}>Dane logowania</Text>
             <Text style={styles.stepSubtitle}>Twoje bezpieczne wejście do świata FajnaRobota.</Text>
             <View style={styles.form}>
-              <TextInput
-                label="E-mail"
-                value={email}
-                onChangeText={setEmail}
-                mode="outlined"
-                style={styles.input}
-                outlineColor={Colors.border}
-                activeOutlineColor={Colors.primary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <TextInput
-                label="Hasło"
-                value={password}
-                onChangeText={setPassword}
-                mode="outlined"
-                secureTextEntry
-                style={styles.input}
-                outlineColor={Colors.border}
-                activeOutlineColor={Colors.primary}
-              />
+              <View>
+                <TextInput
+                  label="E-mail"
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errors.email) setErrors({...errors, email: undefined});
+                  }}
+                  mode="outlined"
+                  error={!!errors.email}
+                  style={styles.input}
+                  outlineColor={Colors.border}
+                  activeOutlineColor={Colors.primary}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+              </View>
+              <View>
+                <TextInput
+                  label="Hasło"
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (errors.password) setErrors({...errors, password: undefined});
+                  }}
+                  mode="outlined"
+                  error={!!errors.password}
+                  secureTextEntry
+                  style={styles.input}
+                  outlineColor={Colors.border}
+                  activeOutlineColor={Colors.primary}
+                />
+                {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+              </View>
             </View>
           </View>
         );
@@ -279,104 +347,160 @@ export default function RegisterScreen() {
             
             {role === 'candidate' ? (
               <View style={styles.form}>
-                <TextInput
-                  label="Imię i nazwisko"
-                  value={candidateData.name}
-                  onChangeText={(text) => setCandidateData({...candidateData, name: text})}
-                  mode="outlined"
-                  style={styles.input}
-                  outlineColor={Colors.border}
-                  activeOutlineColor={Colors.primary}
-                />
-                <TextInput
-                  label="Wiek"
-                  value={candidateData.age}
-                  onChangeText={(text) => setCandidateData({...candidateData, age: text})}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.input}
-                  outlineColor={Colors.border}
-                  activeOutlineColor={Colors.primary}
-                />
-                <LocationPicker
-                  label="Miejscowość"
-                  onLocationSelect={(loc) => setCandidateData({
-                    ...candidateData, 
-                    locationName: loc.name,
-                    lat: loc.lat,
-                    lng: loc.lng
-                  })}
-                  style={styles.input}
-                />
-                <Text style={styles.sectionLabel}>Oczekiwania finansowe</Text>
-                <View style={styles.chipContainer}>
-                  {Config.SALARY_RANGES.map(range => (
-                    <Chip 
-                      key={range}
-                      selected={candidateData.salary === range}
-                      onPress={() => setCandidateData({...candidateData, salary: range})}
-                      style={[
-                        styles.chip,
-                        candidateData.salary === range && { backgroundColor: Colors.primary }
-                      ]}
-                      showSelectedCheck={false}
-                      selectedColor={candidateData.salary === range ? '#fff' : Colors.text}
-                    >
-                      {range}
-                    </Chip>
-                  ))}
+                <View>
+                  <TextInput
+                    label="Imię i nazwisko"
+                    value={candidateData.name}
+                    onChangeText={(text) => {
+                      setCandidateData({...candidateData, name: text});
+                      if (errors.name) setErrors({...errors, name: undefined});
+                    }}
+                    mode="outlined"
+                    error={!!errors.name}
+                    style={styles.input}
+                    outlineColor={Colors.border}
+                    activeOutlineColor={Colors.primary}
+                  />
+                  {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+                </View>
+                <View>
+                  <TextInput
+                    label="Wiek"
+                    value={candidateData.age}
+                    onChangeText={(text) => {
+                      setCandidateData({...candidateData, age: text});
+                      if (errors.age) setErrors({...errors, age: undefined});
+                    }}
+                    mode="outlined"
+                    error={!!errors.age}
+                    keyboardType="numeric"
+                    style={styles.input}
+                    outlineColor={Colors.border}
+                    activeOutlineColor={Colors.primary}
+                  />
+                  {errors.age && <Text style={styles.errorText}>{errors.age}</Text>}
+                </View>
+                <View>
+                  <LocationPicker
+                    label="Miejscowość"
+                    onLocationSelect={(loc) => {
+                      setCandidateData({
+                        ...candidateData, 
+                        locationName: loc.name,
+                        lat: loc.lat,
+                        lng: loc.lng
+                      });
+                      if (errors.location) setErrors({...errors, location: undefined});
+                    }}
+                    style={styles.input}
+                  />
+                  {errors.location && <Text style={styles.errorText}>{errors.location}</Text>}
+                </View>
+                <View>
+                  <Text style={styles.sectionLabel}>Oczekiwania finansowe</Text>
+                  <View style={styles.chipContainer}>
+                    {Config.SALARY_RANGES
+                      .filter(range => range !== 'Do uzgodnienia')
+                      .map(range => (
+                      <Chip 
+                        key={range}
+                        selected={candidateData.salary === range}
+                        onPress={() => {
+                          setCandidateData({...candidateData, salary: range});
+                          if (errors.salary) setErrors({...errors, salary: undefined});
+                        }}
+                        style={[
+                          styles.chip,
+                          candidateData.salary === range && { backgroundColor: Colors.primary }
+                        ]}
+                        showSelectedCheck={false}
+                        selectedColor={candidateData.salary === range ? '#fff' : Colors.text}
+                      >
+                        {range}
+                      </Chip>
+                    ))}
+                  </View>
+                  {errors.salary && <Text style={styles.errorText}>{errors.salary}</Text>}
                 </View>
               </View>
             ) : (
               <View style={styles.form}>
-                <TextInput
-                  label="Nazwa firmy"
-                  value={employerData.companyName}
-                  onChangeText={(text) => setEmployerData({...employerData, companyName: text})}
-                  mode="outlined"
-                  style={styles.input}
-                  outlineColor={Colors.border}
-                  activeOutlineColor={Colors.primary}
-                />
-                <LocationPicker
-                  label="Miejscowość"
-                  onLocationSelect={(loc) => setEmployerData({
-                    ...employerData, 
-                    locationName: loc.name,
-                    lat: loc.lat,
-                    lng: loc.lng
-                  })}
-                  style={styles.input}
-                />
-                <Text style={styles.sectionLabel}>Oferowane wynagrodzenie (średnie)</Text>
-                <View style={styles.chipContainer}>
-                  {Config.SALARY_RANGES.map(range => (
-                    <Chip 
-                      key={range}
-                      selected={employerData.salaryRange === range}
-                      onPress={() => setEmployerData({...employerData, salaryRange: range})}
-                      style={[
-                        styles.chip,
-                        employerData.salaryRange === range && { backgroundColor: Colors.primary }
-                      ]}
-                      showSelectedCheck={false}
-                      selectedColor={employerData.salaryRange === range ? '#fff' : Colors.text}
-                    >
-                      {range}
-                    </Chip>
-                  ))}
+                <View>
+                  <TextInput
+                    label="Nazwa firmy"
+                    value={employerData.companyName}
+                    onChangeText={(text) => {
+                      setEmployerData({...employerData, companyName: text});
+                      if (errors.companyName) setErrors({...errors, companyName: undefined});
+                    }}
+                    mode="outlined"
+                    error={!!errors.companyName}
+                    style={styles.input}
+                    outlineColor={Colors.border}
+                    activeOutlineColor={Colors.primary}
+                  />
+                  {errors.companyName && <Text style={styles.errorText}>{errors.companyName}</Text>}
                 </View>
-                <TextInput
-                  label="Twój opis / O firmie"
-                  value={employerData.description}
-                  onChangeText={(text) => setEmployerData({...employerData, description: text})}
-                  mode="outlined"
-                  multiline
-                  numberOfLines={4}
-                  style={styles.input}
-                  outlineColor={Colors.border}
-                  activeOutlineColor={Colors.primary}
-                />
+                <View>
+                  <LocationPicker
+                    label="Miejscowość"
+                    onLocationSelect={(loc) => {
+                      setEmployerData({
+                        ...employerData, 
+                        locationName: loc.name,
+                        lat: loc.lat,
+                        lng: loc.lng
+                      });
+                      if (errors.location) setErrors({...errors, location: undefined});
+                    }}
+                    style={styles.input}
+                  />
+                  {errors.location && <Text style={styles.errorText}>{errors.location}</Text>}
+                </View>
+                <View>
+                  <Text style={styles.sectionLabel}>Oferowane wynagrodzenie (średnie)</Text>
+                  <View style={styles.chipContainer}>
+                    {Config.SALARY_RANGES
+                      .filter(range => range !== 'Jeszcze nie wiem')
+                      .map(range => (
+                      <Chip 
+                        key={range}
+                        selected={employerData.salaryRange === range}
+                        onPress={() => {
+                          setEmployerData({...employerData, salaryRange: range});
+                          if (errors.salary) setErrors({...errors, salary: undefined});
+                        }}
+                        style={[
+                          styles.chip,
+                          employerData.salaryRange === range && { backgroundColor: Colors.primary }
+                        ]}
+                        showSelectedCheck={false}
+                        selectedColor={employerData.salaryRange === range ? '#fff' : Colors.text}
+                      >
+                        {range}
+                      </Chip>
+                    ))}
+                  </View>
+                  {errors.salary && <Text style={styles.errorText}>{errors.salary}</Text>}
+                </View>
+                <View>
+                  <TextInput
+                    label="Twój opis / O firmie"
+                    value={employerData.description}
+                    onChangeText={(text) => {
+                      setEmployerData({...employerData, description: text});
+                      if (errors.description) setErrors({...errors, description: undefined});
+                    }}
+                    mode="outlined"
+                    error={!!errors.description}
+                    multiline
+                    numberOfLines={4}
+                    style={styles.input}
+                    outlineColor={Colors.border}
+                    activeOutlineColor={Colors.primary}
+                  />
+                  {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+                </View>
               </View>
             )}
           </View>
@@ -388,41 +512,53 @@ export default function RegisterScreen() {
             <Text style={styles.stepTitle}>Twoje umiejętności</Text>
             <Text style={styles.stepSubtitle}>Wybierz do 5 najważniejszych skilli i swoją supermoc.</Text>
 
-            <View style={styles.chipContainer}>
-              {SKILLS_LIST.map(skill => (
-                <Chip 
-                  key={skill}
-                  selected={candidateData.skills.includes(skill)}
-                  onPress={() => toggleSkill(skill)}
-                  style={[
-                    styles.chip,
-                    candidateData.skills.includes(skill) && { backgroundColor: Colors.primary }
-                  ]}
-                  showSelectedCheck={false}
-                  selectedColor={candidateData.skills.includes(skill) ? '#fff' : Colors.text}
-                >
-                  {skill}
-                </Chip>
-              ))}
+            <View>
+              <View style={styles.chipContainer}>
+                {SKILLS_LIST.map(skill => (
+                  <Chip 
+                    key={skill}
+                    selected={candidateData.skills.includes(skill)}
+                    onPress={() => {
+                      toggleSkill(skill);
+                      if (errors.skills) setErrors({...errors, skills: undefined});
+                    }}
+                    style={[
+                      styles.chip,
+                      candidateData.skills.includes(skill) && { backgroundColor: Colors.primary }
+                    ]}
+                    showSelectedCheck={false}
+                    selectedColor={candidateData.skills.includes(skill) ? '#fff' : Colors.text}
+                  >
+                    {skill}
+                  </Chip>
+                ))}
+              </View>
+              {errors.skills && <Text style={styles.errorText}>{errors.skills}</Text>}
             </View>
 
-            <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Supermoc</Text>
-            <View style={styles.chipContainer}>
-              {SUPERPOWERS.map(power => (
-                <Chip 
-                  key={power}
-                  selected={candidateData.superpower === power}
-                  onPress={() => setCandidateData({...candidateData, superpower: power})}
-                  style={[
-                    styles.chip,
-                    candidateData.superpower === power && { backgroundColor: Colors.xpBar }
-                  ]}
-                  showSelectedCheck={false}
-                  selectedColor={candidateData.superpower === power ? '#000' : Colors.text}
-                >
-                  {power}
-                </Chip>
-              ))}
+            <View style={{ marginTop: 24 }}>
+              <Text style={styles.sectionLabel}>Supermoc</Text>
+              <View style={styles.chipContainer}>
+                {SUPERPOWERS.map(power => (
+                  <Chip 
+                    key={power}
+                    selected={candidateData.superpower === power}
+                    onPress={() => {
+                      setCandidateData({...candidateData, superpower: power});
+                      if (errors.superpower) setErrors({...errors, superpower: undefined});
+                    }}
+                    style={[
+                      styles.chip,
+                      candidateData.superpower === power && { backgroundColor: Colors.xpBar }
+                    ]}
+                    showSelectedCheck={false}
+                    selectedColor={candidateData.superpower === power ? '#000' : Colors.text}
+                  >
+                    {power}
+                  </Chip>
+                ))}
+              </View>
+              {errors.superpower && <Text style={styles.errorText}>{errors.superpower}</Text>}
             </View>
           </View>
         ) : (
@@ -611,6 +747,13 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: Colors.surface,
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: 12,
+    fontFamily: 'Montserrat_400Regular',
+    marginTop: 4,
+    marginLeft: 4,
   },
   chipContainer: {
     flexDirection: 'row',
