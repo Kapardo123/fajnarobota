@@ -72,7 +72,7 @@ export default function LocationPicker({
       setResults([]);
 
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&countrycodes=pl&addressdetails=1&limit=10&featuretype=settlement`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&countrycodes=pl&addressdetails=1&limit=15&featuretype=settlement`,
         {
           signal: controller.signal,
           headers: {
@@ -83,18 +83,38 @@ export default function LocationPicker({
       const data = await response.json();
       
       if (!controller.signal.aborted) {
-        // Bardzo restrykcyjna filtracja duplikatów:
-        // 1. Po place_id
-        // 2. Po uproszczonej nazwie (Miasto + Województwo)
+        // Bardzo restrykcyjna filtracja:
+        // 1. Tylko obiekty będące faktycznymi miejscowościami (city, town, village, hamlet)
+        // 2. Pomijamy powiaty, gminy i inne twory administracyjne
+        const settlementTypes = ['city', 'town', 'village', 'hamlet', 'suburb'];
+        
         const seenNames = new Set();
         const uniqueData = data.filter((item: any) => {
-          const simpleName = item.display_name.split(',').slice(0, 2).join(',').trim().toLowerCase();
-          if (seenNames.has(simpleName)) {
-            return false;
-          }
-          seenNames.add(simpleName);
+          // Sprawdzamy typ obiektu w addressdetails lub type
+          const type = item.type;
+          const address = item.address || {};
+          
+          // Kluczowe sprawdzenie: czy to jest miejscowość, a nie gmina/powiat
+          const isSettlement = settlementTypes.includes(type) || 
+                               address.city || address.town || address.village || address.hamlet;
+          
+          // Odrzucamy jeśli to jawnie administracja (gmina/powiat)
+          const isAdministrative = type === 'administrative' || address.county || address.municipality === item.display_name.split(',')[0].trim();
+
+          if (!isSettlement) return false;
+
+          // Budujemy czytelną nazwę: "Miejscowość, Województwo"
+          const name = address.city || address.town || address.village || address.hamlet || address.suburb || item.display_name.split(',')[0].trim();
+          const state = address.state ? `, ${address.state.replace('województwo ', '')}` : '';
+          const cleanName = `${name}${state}`.toLowerCase();
+
+          if (seenNames.has(cleanName)) return false;
+          seenNames.add(cleanName);
+          
+          // Aktualizujemy display_name dla UI
+          item.display_name = `${name}${state}`;
           return true;
-        }).slice(0, 5); // Zwracamy tylko top 5 unikalnych
+        }).slice(0, 5);
         
         setResults(uniqueData);
       }
@@ -110,7 +130,7 @@ export default function LocationPicker({
 
   const handleSelect = (item: LocationResult) => {
     setIsSelectionActive(true);
-    const displayName = item.display_name.split(',').slice(0, 2).join(',').trim();
+    const displayName = item.display_name;
     setQuery(displayName);
     setShowResults(false);
     setResults([]);
