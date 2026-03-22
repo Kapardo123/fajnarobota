@@ -299,8 +299,8 @@ export default function SwipeScreen() {
         imageStyle={{ opacity: item.isBlurred ? 0.7 : 1 }}
       >
         <LinearGradient
-          colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)', 'rgba(0,0,0,0.95)']}
-          locations={[0, 0.2, 0.4, 0.6, 0.9]}
+          colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)', '#000']}
+          locations={[0, 0.2, 0.4, 0.7, 1.0]}
           style={styles.gradient}
         >
           {/* TOP SECTION */}
@@ -528,14 +528,14 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     width: '100%',
-    height: SCREEN_HEIGHT * 0.75, // Nieco krótsza karta, aby lepiej się centrowała
+    height: SCREEN_HEIGHT * 0.8, // Zwiększona wysokość, aby lepiej wypełnić ekran
   },
   card: {
     flex: 1,
     borderRadius: 24,
     overflow: 'hidden',
     elevation: 8,
-    backgroundColor: '#1a1a1a', // Ciemne tło zapobiega "białemu polu"
+    backgroundColor: '#000', // Czysta czerń zamiast szarego
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -543,11 +543,11 @@ const styles = StyleSheet.create({
   },
   cardImage: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#000',
   },
   gradient: {
     flex: 1,
-    padding: 20, // Nieco mniejszy padding, aby zyskać miejsce
+    padding: 20,
     justifyContent: 'space-between',
   },
   topBadgesRow: {
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
   },
   overlayContentModern: {
     gap: 14,
-    paddingBottom: 15, // Odstęp od dołu karty
+    paddingBottom: 20, // Zwiększony padding, aby lepiej wypełnić dół
   },
   headerRowModern: {
     flexDirection: 'row',
