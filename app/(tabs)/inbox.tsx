@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../src/lib/supabase';
+import { formatDistanceToNow } from 'date-fns';
+import { pl } from 'date-fns/locale';
 
 interface Match {
   id: string;
@@ -122,7 +124,7 @@ export default function InboxScreen() {
         right={() => (
           <View style={styles.rightContainer}>
             <Text variant="labelSmall" style={styles.timestamp}>
-              {new Date(item.last_message_at || item.created_at).toLocaleDateString()}
+              {formatDistanceToNow(new Date(item.last_message_at || item.created_at), { addSuffix: true, locale: pl })}
             </Text>
           </View>
         )}
