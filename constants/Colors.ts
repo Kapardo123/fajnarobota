@@ -4,8 +4,8 @@ export const Colors = {
   superJob: '#FFD700', // Złota gwiazdka
   background: '#F5F5F5',
   surface: '#FFFFFF',
-  text: '#1A1A1A',
-  textLight: '#757575',
+  text: '#000000',
+  textLight: '#444444',
   border: '#EEEEEE',
   chip: '#F0F0F0',
   chipText: '#424242',

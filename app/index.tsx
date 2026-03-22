@@ -18,7 +18,7 @@ export default function LandingScreen() {
         style={styles.heroImage}
       >
         <LinearGradient
-          colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)', Colors.surface]}
+          colors={['rgba(255,255,255,0.8)', 'rgba(255,255,255,0.9)', Colors.surface]}
           locations={[0, 0.4, 0.7]}
           style={styles.gradient}
         >
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   logoBadge: {
     width: 40,
     height: 40,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(0,0,0,0.1)',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 24,
     fontFamily: 'Montserrat_900Black',
-    color: '#fff',
+    color: '#000',
     letterSpacing: -0.5,
   },
   centerSection: {
@@ -121,14 +121,14 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 48,
     fontFamily: 'Montserrat_900Black',
-    color: '#fff',
+    color: '#000',
     lineHeight: 52,
     marginBottom: 16,
   },
   heroSubtitle: {
     fontSize: 18,
     fontFamily: 'Montserrat_400Regular',
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(0,0,0,0.7)',
     lineHeight: 26,
     marginBottom: 32,
   },
@@ -140,16 +140,16 @@ const styles = StyleSheet.create({
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(0,0,0,0.05)',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(0,0,0,0.1)',
     gap: 6,
   },
   featureText: {
-    color: '#fff',
+    color: '#000',
     fontSize: 14,
     fontFamily: 'Montserrat_700Bold',
   },

@@ -48,11 +48,25 @@ export default function SwipeScreen() {
         .eq('id', user.id)
         .single();
 
+      // Pobierz ID już przesuniętych kart
+      const { data: swiped } = await supabase
+        .from('swipes')
+        .select('target_id')
+        .eq('swiper_id', user.id);
+      
+      const swipedIds = swiped?.map(s => s.target_id) || [];
+
       if (profile?.role === 'candidate') {
-        // Kandydat widzi oferty pracy
-        const { data: jobs } = await supabase
+        // Kandydat widzi oferty pracy, których jeszcze nie ocenił
+        let query = supabase
           .from('jobs')
           .select('*, employers(company_name)');
+        
+        if (swipedIds.length > 0) {
+          query = query.not('id', 'in', `(${swipedIds.join(',')})`);
+        }
+
+        const { data: jobs } = await query;
         
         if (jobs) {
           const jobCards: CardData[] = jobs.map(job => ({
@@ -70,10 +84,16 @@ export default function SwipeScreen() {
           setCards(jobCards);
         }
       } else {
-        // Pracodawca widzi kandydatów
-        const { data: candidates } = await supabase
+        // Pracodawca widzi kandydatów, których jeszcze nie ocenił
+        let query = supabase
           .from('candidates')
           .select('*, profiles(full_name, avatar_url)');
+        
+        if (swipedIds.length > 0) {
+          query = query.not('id', 'in', `(${swipedIds.join(',')})`);
+        }
+
+        const { data: candidates } = await query;
         
         if (candidates) {
           const candidateCards: CardData[] = candidates.map(cand => ({
@@ -124,10 +144,79 @@ export default function SwipeScreen() {
     }).start(() => onSwipeComplete(direction));
   };
 
-  const onSwipeComplete = (direction: 'right' | 'left') => {
-    if (direction === 'right') {
-      setMatchVisible(true);
+  const onSwipeComplete = async (direction: 'right' | 'left') => {
+    const item = cards[index];
+    if (!item) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // 1. Zapisz swipe w bazie
+      await supabase.from('swipes').insert({
+        swiper_id: user.id,
+        target_id: item.id,
+        direction: direction
+      });
+
+      // 2. Jeśli swipe w prawo, sprawdź czy jest Match
+      if (direction === 'right') {
+        let isMatch = false;
+        let matchData: any = null;
+
+        if (item.type === 'job') {
+          // Pobierz pracodawcę tej oferty
+          const { data: job } = await supabase.from('jobs').select('employer_id').eq('id', item.id).single();
+          if (job) {
+            // Sprawdź czy pracodawca polubił kandydata
+            const { data: employerSwipe } = await supabase
+              .from('swipes')
+              .select('*')
+              .eq('swiper_id', job.employer_id)
+              .eq('target_id', user.id)
+              .eq('direction', 'right')
+              .single();
+
+            if (employerSwipe) {
+              isMatch = true;
+              matchData = { candidate_id: user.id, employer_id: job.employer_id, job_id: item.id };
+            }
+          }
+        } else {
+          // Pracodawca swipe'uje kandydata
+          // Sprawdź czy kandydat polubił jakąkolwiek ofertę tego pracodawcy
+          const { data: employerJobs } = await supabase.from('jobs').select('id').eq('employer_id', user.id);
+          const jobIds = employerJobs?.map(j => j.id) || [];
+
+          if (jobIds.length > 0) {
+            const { data: candidateSwipe } = await supabase
+              .from('swipes')
+              .select('target_id')
+              .eq('swiper_id', item.id)
+              .in('target_id', jobIds)
+              .eq('direction', 'right')
+              .limit(1)
+              .single();
+
+            if (candidateSwipe) {
+              isMatch = true;
+              matchData = { candidate_id: item.id, employer_id: user.id, job_id: candidateSwipe.target_id };
+            }
+          }
+        }
+
+        if (isMatch && matchData) {
+          // Zapisz Match w bazie
+          const { error: matchError } = await supabase.from('matches').insert(matchData);
+          if (!matchError) {
+            setMatchVisible(true);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error handling swipe:', error);
     }
+
     position.setValue({ x: 0, y: 0 });
     setIndex(prev => prev + 1);
   };
@@ -158,7 +247,8 @@ export default function SwipeScreen() {
         blurRadius={item.isBlurred ? 20 : 0}
       >
         <LinearGradient
-          colors={['rgba(0,0,0,0.1)', 'transparent', 'rgba(0,0,0,0.8)']}
+          colors={['rgba(255,255,255,0.2)', 'transparent', 'rgba(255,255,255,0.95)']}
+          locations={[0, 0.5, 0.8]}
           style={styles.gradient}
         >
           {item.matchScore && (
@@ -169,7 +259,7 @@ export default function SwipeScreen() {
           
           {item.isBlurred && (
             <View style={styles.lockContainer}>
-              <MaterialCommunityIcons name="lock" size={40} color="#fff" />
+              <MaterialCommunityIcons name="lock" size={40} color={Colors.text} />
             </View>
           )}
 
@@ -184,7 +274,7 @@ export default function SwipeScreen() {
             <View style={styles.tagRow}>
               {item.tags.map((tag, i) => (
                 <View key={i} style={styles.tag}>
-                  <MaterialCommunityIcons name={tag.icon as any} size={16} color="#fff" />
+                  <MaterialCommunityIcons name={tag.icon as any} size={16} color={Colors.textLight} />
                   <Text style={styles.tagText}>{tag.text}</Text>
                 </View>
               ))}
@@ -349,14 +439,14 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   matchText: {
-    color: '#fff',
+    color: Colors.primary,
     fontFamily: 'Montserrat_700Bold',
   },
   lockContainer: {
     position: 'absolute',
     top: '40%',
     left: '45%',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.5)',
     padding: 10,
     borderRadius: 30,
   },
@@ -366,12 +456,12 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 32,
     fontFamily: 'Montserrat_900Black',
-    color: '#fff',
+    color: Colors.text,
   },
   cardSubtitle: {
     fontSize: 18,
     fontFamily: 'Montserrat_400Regular',
-    color: 'rgba(255,255,255,0.9)',
+    color: Colors.textLight,
     marginBottom: 8,
   },
   priceBadge: {
@@ -398,7 +488,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tagText: {
-    color: '#fff',
+    color: Colors.text,
     fontFamily: 'Montserrat_400Regular',
     fontSize: 14,
   },
@@ -421,7 +511,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   matchModal: {
-    backgroundColor: 'rgba(0,0,0,0.9)',
+    backgroundColor: 'rgba(255,255,255,0.98)',
     margin: 0,
     flex: 1,
     justifyContent: 'center',
@@ -435,7 +525,7 @@ const styles = StyleSheet.create({
   matchTitle: {
     fontSize: 36,
     fontFamily: 'Montserrat_900Black',
-    color: '#fff',
+    color: Colors.text,
     textAlign: 'center',
     marginBottom: 40,
   },
