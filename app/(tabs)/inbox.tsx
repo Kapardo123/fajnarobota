@@ -1,8 +1,8 @@
 import { View, StyleSheet, FlatList, TouchableOpacity, ScrollView, Image, ActivityIndicator, RefreshControl } from 'react-native';
 import { Text, Avatar, List, Divider, Searchbar } from 'react-native-paper';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/Colors';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../src/lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -28,6 +28,15 @@ export default function InboxScreen() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  // Odświeżaj dane przy każdym wejściu na ekran
+  useFocusEffect(
+    useCallback(() => {
+      if (currentUserId) {
+        fetchMatches(false, currentUserId);
+      }
+    }, [currentUserId])
+  );
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -46,7 +55,8 @@ export default function InboxScreen() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'messages' },
         (payload) => {
-          console.log('Realtime message change:', payload.eventType);
+          console.log('Realtime message update in Inbox:', payload.eventType);
+          // Odświeżamy listę przy KAŻDEJ zmianie w wiadomościach (wysłane/otrzymane)
           fetchMatches(false);
         }
       )
@@ -54,13 +64,10 @@ export default function InboxScreen() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'matches' },
         (payload) => {
-          console.log('Realtime match change:', payload.eventType);
           fetchMatches(false);
         }
       )
-      .subscribe((status) => {
-        console.log('Inbox Realtime Status:', status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
