@@ -989,15 +989,24 @@ export default function ProfileScreen() {
       </Modal>
 
       {/* Modal edycji Dostępności */}
-      <Modal visible={isEditingAvailability} onDismiss={() => setIsEditingAvailability(false)} transparent={true} animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+      <Modal 
+        visible={isEditingAvailability} 
+        onRequestClose={() => setIsEditingAvailability(false)} 
+        transparent={true} 
+        animationType="slide"
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setIsEditingAvailability(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeader}>
               <Text variant="headlineSmall" style={styles.modalTitle}>Kiedy możesz pracować?</Text>
               <IconButton icon="close" onPress={() => setIsEditingAvailability(false)} />
             </View>
             <View style={styles.chipContainer}>
-              {['Dostępny od zaraz', 'Tylko weekendy', 'Wieczory', 'Elastycznie', 'Szukam stałej pracy'].map(status => (
+              {['Od zaraz', 'W tygodniu', 'Tylko weekendy', 'Wieczorami', 'Dorywczo'].map(status => (
                 <Chip 
                   key={status}
                   selected={candidateDetails?.availability_status === status}
@@ -1006,8 +1015,11 @@ export default function ProfileScreen() {
                     styles.chip,
                     candidateDetails?.availability_status === status && { backgroundColor: Colors.primary }
                   ]}
+                  textStyle={[
+                    styles.chipText,
+                    candidateDetails?.availability_status === status && { color: '#fff' }
+                  ]}
                   showSelectedCheck={false}
-                  selectedColor={candidateDetails?.availability_status === status ? '#fff' : Colors.text}
                 >
                   {status}
                 </Chip>
@@ -1018,9 +1030,18 @@ export default function ProfileScreen() {
       </Modal>
 
       {/* Modal edycji doświadczenia */}
-      <Modal visible={isEditingExp} onDismiss={() => setIsEditingExp(false)} transparent={true} animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+      <Modal 
+        visible={isEditingExp} 
+        onRequestClose={() => setIsEditingExp(false)} 
+        transparent={true} 
+        animationType="slide"
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setIsEditingExp(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeader}>
               <Text variant="headlineSmall" style={styles.modalTitle}>Dodaj doświadczenie</Text>
               <IconButton icon="close" onPress={() => setIsEditingExp(false)} />
@@ -1062,13 +1083,22 @@ export default function ProfileScreen() {
               Dodaj do profilu
             </Button>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* Modal edycji lokalizacji */}
-      <Modal visible={isEditingLocation} onDismiss={() => setIsEditingLocation(false)} transparent={true} animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+      <Modal 
+        visible={isEditingLocation} 
+        onRequestClose={() => setIsEditingLocation(false)} 
+        transparent={true} 
+        animationType="slide"
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setIsEditingLocation(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeader}>
               <Text variant="headlineSmall" style={styles.modalTitle}>Ustaw lokalizację</Text>
               <IconButton icon="close" onPress={() => setIsEditingLocation(false)} />
@@ -1080,7 +1110,7 @@ export default function ProfileScreen() {
               placeholder="Wyszukaj miasto..."
             />
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       <ImageEditorModal 
@@ -1393,5 +1423,20 @@ const styles = StyleSheet.create({
   },
   modalSubmitBtnContent: {
     paddingVertical: 12,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  chip: {
+    marginBottom: 8,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 12,
+  },
+  chipText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 14,
   },
 });
