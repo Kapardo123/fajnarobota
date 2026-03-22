@@ -1,5 +1,5 @@
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, TouchableOpacity, Alert, Modal, ScrollView, TextInput as RNTextInput } from 'react-native';
-import { Text, IconButton, Avatar, Appbar } from 'react-native-paper';
+import { Text, IconButton, Avatar, Appbar, Button } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -40,7 +40,13 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [jobInfo, setJobInfo] = useState<JobInfo | null>(null);
+  const [jobInfo, setJobInfo] = useState<JobInfo>({
+    title: 'Oferta',
+    salary_range: 'Do uzgodnienia',
+    location_name: 'Lokalizacja',
+    description: 'Brak opisu',
+    skills: []
+  });
   const [jobModalVisible, setJobInfoVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
@@ -514,7 +520,7 @@ export default function ChatScreen() {
 
               <Text style={styles.sectionLabel}>Wymagane umiejętności</Text>
               <View style={styles.skillsContainer}>
-                {jobInfo?.skills.map((skill, index) => (
+                {(jobInfo?.skills || []).map((skill, index) => (
                   <View key={index} style={styles.skillChip}>
                     <Text style={styles.skillText}>{skill}</Text>
                   </View>

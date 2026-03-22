@@ -1,4 +1,4 @@
-import { View, StyleSheet, FlatList, TouchableOpacity, ScrollView, Image, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, ScrollView, Image, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { Text, Avatar, List, Divider, Searchbar } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/Colors';
@@ -218,16 +218,8 @@ export default function InboxScreen() {
     m.display_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loading) {
-    return (
-      <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator color={Colors.primary} size="large" />
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
+  const renderHeader = useCallback(() => (
+    <>
       <View style={styles.header}>
         <Text variant="headlineMedium" style={styles.headerTitle}>Twoje Pary</Text>
       </View>
@@ -241,55 +233,68 @@ export default function InboxScreen() {
         iconColor={Colors.primary}
       />
 
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
+      <View style={styles.newMatchesSection}>
+        <Text variant="titleMedium" style={styles.sectionTitle}>Nowe Pary</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.newMatchesList}>
+          {matches.slice(0, 10).map(match => (
+            <TouchableOpacity 
+              key={match.id} 
+              style={styles.newMatchItem}
+              onPress={() => router.push({
+                pathname: '/chat/[id]',
+                params: { id: match.id, name: match.display_name }
+              })}
+            >
+              <Image source={{ uri: match.display_image }} style={styles.newMatchAvatar} />
+              <Text variant="labelSmall" style={styles.newMatchName} numberOfLines={1}>{match.display_name}</Text>
+            </TouchableOpacity>
+          ))}
+          {matches.length === 0 && (
+            <Text style={{ marginLeft: 20, color: Colors.textLight, fontFamily: 'Montserrat_400Regular' }}>
+              Brak nowych par. Swipe'uj dalej!
+            </Text>
+          )}
+        </ScrollView>
+      </View>
+
+      <Divider style={styles.sectionDivider} />
+
+      <View style={styles.chatsSection}>
+        <Text variant="titleMedium" style={styles.sectionTitle}>Wiadomości</Text>
+      </View>
+    </>
+  ), [matches, searchQuery]);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator color={Colors.primary} size="large" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={filteredMatches}
+        renderItem={renderChatItem}
+        keyExtractor={item => item.id}
+        style={{ flex: 1 }}
+        keyboardShouldPersistTaps="handled"
+        removeClippedSubviews={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
         }
-      >
-        <View style={styles.newMatchesSection}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Nowe Pary</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.newMatchesList}>
-            {matches.slice(0, 5).map(match => (
-              <TouchableOpacity 
-                key={match.id} 
-                style={styles.newMatchItem}
-                onPress={() => router.push({
-                  pathname: '/chat/[id]',
-                  params: { id: match.id, name: match.display_name }
-                })}
-              >
-                <Image source={{ uri: match.display_image }} style={styles.newMatchAvatar} />
-                <Text variant="labelSmall" style={styles.newMatchName} numberOfLines={1}>{match.display_name}</Text>
-              </TouchableOpacity>
-            ))}
-            {matches.length === 0 && (
-              <Text style={{ marginLeft: 20, color: Colors.textLight, fontFamily: 'Montserrat_400Regular' }}>
-                Brak nowych par. Swipe'uj dalej!
-              </Text>
-            )}
-          </ScrollView>
-        </View>
-
-        <Divider style={styles.sectionDivider} />
-
-        <View style={styles.chatsSection}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Wiadomości</Text>
-          <FlatList
-            data={filteredMatches}
-            renderItem={renderChatItem}
-            keyExtractor={item => item.id}
-            scrollEnabled={false}
-            ListEmptyComponent={() => (
-              <View style={{ padding: 40, alignItems: 'center' }}>
-                <Text style={{ color: Colors.textLight, fontFamily: 'Montserrat_400Regular' }}>
-                  Brak wiadomości.
-                </Text>
-              </View>
-            )}
-          />
-        </View>
-      </ScrollView>
+        contentContainerStyle={{ paddingBottom: 60, flexGrow: 1 }}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={() => (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <Text style={{ color: Colors.textLight, fontFamily: 'Montserrat_400Regular' }}>
+              {searchQuery ? 'Nie znaleziono pasujących rozmów.' : 'Brak wiadomości.'}
+            </Text>
+          </View>
+        )}
+      />
     </View>
   );
 }
@@ -362,7 +367,7 @@ const styles = StyleSheet.create({
     height: 8,
   },
   chatsSection: {
-    flex: 1,
+    marginTop: 10,
   },
   listItem: {
     paddingHorizontal: 10,

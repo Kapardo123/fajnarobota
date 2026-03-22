@@ -39,9 +39,25 @@ export default function TabsLayout() {
 
   const fetchUnreadCount = async (uid: string) => {
     try {
+      // Pobierz IDs wszystkich matchy tego użytkownika
+      const { data: matches, error: matchesError } = await supabase
+        .from('matches')
+        .select('id')
+        .or(`candidate_id.eq.${uid},employer_id.eq.${uid}`);
+
+      if (matchesError) throw matchesError;
+      if (!matches || matches.length === 0) {
+        setUnreadCount(0);
+        return;
+      }
+
+      const matchIds = matches.map(m => m.id);
+
+      // Policz nieprzeczytane wiadomości TYLKO w tych matchach
       const { count, error } = await supabase
         .from('messages')
         .select('*', { count: 'exact', head: true })
+        .in('match_id', matchIds)
         .eq('is_read', false)
         .neq('sender_id', uid);
 
