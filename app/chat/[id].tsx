@@ -34,18 +34,23 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    if (!id) return;
+    let isMounted = true;
 
     const init = async () => {
+      if (!id) return;
+      
       try {
         setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          // Usunięte router.replace, aby uniknąć niechcianych cofnięć
-          console.log('User not authenticated in chat');
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+
+        if (!session?.user) {
+          console.log('No active session in chat');
           return;
         }
-        setUserId(user.id);
+        
+        setUserId(session.user.id);
 
         // Pobierz wiadomości
         const { data: msgs, error } = await supabase
@@ -55,20 +60,22 @@ export default function ChatScreen() {
           .order('created_at', { ascending: true });
 
         if (error) throw error;
+        if (!isMounted) return;
 
         setMessages(msgs.map(m => ({
           ...m,
-          is_me: m.sender_id === user.id
+          is_me: m.sender_id === session.user.id
         })));
       } catch (error) {
         console.error('Error loading chat:', error);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     init();
-  }, [id]); // Wyzwalaj tylko przy zmianie ID czatu
+    return () => { isMounted = false; };
+  }, [id]); // Wyzwalaj TYLKO przy zmianie ID czatu
 
   useEffect(() => {
     if (!id || !userId) return;
