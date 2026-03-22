@@ -59,19 +59,25 @@ export default function RegisterScreen() {
   const SUPERPOWERS = ['#OgarniamChaos', '#NigdyNieSpóźniony', '#MistrzExcela', '#UśmiechNaTwarzy', '#SzybkiJakBłyskawica'];
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
 
-    if (!result.canceled) {
-      if (role === 'candidate') {
-        setCandidateData({ ...candidateData, photoUrl: result.assets[0].uri });
-      } else {
-        setEmployerData({ ...employerData, photoUrl: result.assets[0].uri });
+      if (!result.canceled) {
+        const uri = result.assets[0].uri;
+        if (role === 'candidate') {
+          setCandidateData(prev => ({ ...prev, photoUrl: uri }));
+        } else {
+          setEmployerData(prev => ({ ...prev, photoUrl: uri }));
+        }
       }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Błąd', 'Nie udało się otworzyć galerii zdjęć.');
     }
   };
 
