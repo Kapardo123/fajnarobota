@@ -28,11 +28,36 @@ export default function InboxScreen() {
 
   useEffect(() => {
     fetchMatches();
+
+    // Nasłuchiwanie na nowe wiadomości w czasie rzeczywistym
+    const channel = supabase
+      .channel('inbox-updates')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        () => {
+          // Gdy pojawi się nowa wiadomość, odświeżamy listę patchy po cichu
+          fetchMatches(false);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'messages' },
+        () => {
+          // Gdy wiadomość zostanie oznaczona jako przeczytana, również odświeżamy po cichu
+          fetchMatches(false);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  const fetchMatches = async () => {
+  const fetchMatches = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -97,7 +122,11 @@ export default function InboxScreen() {
         };
       });
 
-      setMatches(formattedMatches);
+      setMatches(formattedMatches.sort((a, b) => {
+        const timeA = new Date(a.last_message_at || a.created_at).getTime();
+        const timeB = new Date(b.last_message_at || b.created_at).getTime();
+        return timeB - timeA;
+      }));
     } catch (error) {
       console.error('Error fetching matches:', error);
     } finally {
