@@ -23,7 +23,8 @@ interface Message {
 }
 
 export default function ChatScreen() {
-  const { id, name } = useLocalSearchParams();
+  const { id: rawId, name } = useLocalSearchParams();
+  const id = Array.isArray(rawId) ? rawId[0] : rawId;
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -33,13 +34,48 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    if (!id || !userId) return;
+    if (!id) return;
 
-    initChat();
+    const init = async () => {
+      try {
+        setLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.replace('/(auth)/login');
+          return;
+        }
+        setUserId(user.id);
+
+        // Pobierz wiadomości
+        const { data: msgs, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('match_id', id)
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        setMessages(msgs.map(m => ({
+          ...m,
+          is_me: m.sender_id === user.id
+        })));
+      } catch (error) {
+        console.error('Error loading chat:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    init();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id || !userId) return;
     
     // Subskrypcja na nowe wiadomości - uproszczona dla lepszej niezawodności
+    const channelName = `chat_${id.replace(/[^a-zA-Z0-9]/g, '_')}`;
     const subscription = supabase
-      .channel(`chat_${id}`)
+      .channel(channelName)
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
@@ -58,7 +94,7 @@ export default function ChatScreen() {
         });
       })
       .subscribe((status) => {
-        console.log('Realtime subscription status:', status);
+        console.log(`Realtime subscription status for ${channelName}:`, status);
       });
 
     return () => {
@@ -66,41 +102,15 @@ export default function ChatScreen() {
     };
   }, [id, userId]);
 
-  const initChat = async () => {
-    try {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
-
-      const { data: msgs, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('match_id', id)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      setMessages(msgs.map(m => ({
-        ...m,
-        is_me: m.sender_id === user.id
-      })));
-    } catch (error) {
-      console.error('Error loading chat:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const sendMessage = async () => {
-    if (inputText.trim() && userId) {
+    if (inputText.trim() && userId && id) {
       const text = inputText.trim();
-      const tempId = Date.now().toString();
+      const tempId = `temp-${Date.now()}`;
       
       // Optymistyczna aktualizacja UI
       const optimisticMessage: Message = {
         id: tempId,
-        match_id: id as string,
+        match_id: id,
         sender_id: userId,
         content: text,
         type: 'text',
@@ -125,7 +135,6 @@ export default function ChatScreen() {
 
         if (error) throw error;
         
-        // Zastąp wiadomość optymistyczną tą z bazy (aby mieć poprawne ID i timestamp)
         if (data) {
           setMessages(prev => prev.map(m => m.id === tempId ? { ...data, is_me: true } : m));
         }
@@ -133,7 +142,7 @@ export default function ChatScreen() {
         console.error('Error sending message:', error);
         setMessages(prev => prev.filter(m => m.id !== tempId));
         setInputText(text);
-        Alert.alert('Błąd', 'Nie udało się wysłać wiadomości.');
+        Alert.alert('Błąd', 'Nie udało się wysłać wiadomości. Sprawdź połączenie z internetem.');
       }
     }
   };
@@ -148,7 +157,7 @@ export default function ChatScreen() {
       if (result.canceled) return;
 
       const file = result.assets[0];
-      if (file.size && file.size > 10 * 1024 * 1024) { // Zwiększamy do 10MB
+      if (file.size && file.size > 10 * 1024 * 1024) {
         Alert.alert('Błąd', 'Plik jest za duży. Maksymalny rozmiar to 10MB.');
         return;
       }
@@ -160,7 +169,7 @@ export default function ChatScreen() {
   };
 
   const uploadFile = async (file: any) => {
-    if (!userId) return;
+    if (!userId || !id) return;
 
     try {
       setUploading(true);
@@ -168,29 +177,16 @@ export default function ChatScreen() {
       const fileName = `${userId}_${Date.now()}.${fileExt}`;
       const filePath = `cv/${fileName}`;
 
-      // Konwersja pliku na format akceptowany przez Supabase (Blob)
-      let blob;
-      if (Platform.OS === 'web') {
-        const response = await fetch(file.uri);
-        blob = await response.blob();
-      } else {
-        const base64 = await FileSystem.readAsStringAsync(file.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        const byteCharacters = atob(base64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        blob = new Blob([byteArray], { type: 'application/pdf' });
-      }
+      // Bardziej niezawodny sposób na Blob w React Native/Expo
+      const response = await fetch(file.uri);
+      const blob = await response.blob();
 
-      const { error: uploadError, data: uploadData } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('cv_files')
         .upload(filePath, blob, {
           contentType: 'application/pdf',
-          upsert: true
+          cacheControl: '3600',
+          upsert: false
         });
 
       if (uploadError) throw uploadError;
@@ -213,7 +209,7 @@ export default function ChatScreen() {
 
     } catch (error: any) {
       console.error('Error uploading file:', error);
-      Alert.alert('Błąd wysyłania', error.message || 'Nie udało się wysłać pliku.');
+      Alert.alert('Błąd wysyłania', error.message || 'Nie udało się wysłać pliku. Upewnij się, że bucket Storage jest poprawnie skonfigurowany.');
     } finally {
       setUploading(false);
     }
