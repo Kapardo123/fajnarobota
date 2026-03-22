@@ -66,15 +66,21 @@ export default function LocationPicker({
   };
 
   const handleSelect = (item: LocationResult) => {
-    // Czyścimy nazwę z nadmiaru informacji (np. kody pocztowe, kraj)
-    const shortName = item.display_name.split(',')[0];
     setQuery(item.display_name);
     setShowResults(false);
+    setResults([]);
     onLocationSelect({
       name: item.display_name,
       lat: parseFloat(item.lat),
       lng: parseFloat(item.lon)
     });
+  };
+
+  const handleBlur = () => {
+    // Krótkie opóźnienie, aby pozwolić na kliknięcie w element listy
+    setTimeout(() => {
+      setShowResults(false);
+    }, 200);
   };
 
   return (
@@ -84,8 +90,14 @@ export default function LocationPicker({
         value={query}
         onChangeText={(text) => {
           setQuery(text);
-          setShowResults(true);
+          if (text.length > 2) {
+            setShowResults(true);
+          } else {
+            setShowResults(false);
+            setResults([]);
+          }
         }}
+        onBlur={handleBlur}
         mode="outlined"
         placeholder={placeholder}
         outlineColor={Colors.border}
@@ -94,27 +106,34 @@ export default function LocationPicker({
         style={styles.input}
       />
       
-      {showResults && results.length > 0 && (
+      {showResults && (results.length > 0 || loading) && (
         <View style={styles.resultsContainer}>
-          <FlatList
-            data={results}
-            keyExtractor={(item) => item.place_id.toString()}
-            renderItem={({ item }) => (
-              <>
-                <TouchableOpacity onPress={() => handleSelect(item)}>
-                  <List.Item
-                    title={item.display_name}
-                    titleNumberOfLines={2}
-                    titleStyle={styles.resultTitle}
-                    left={props => <List.Icon {...props} icon="map-marker-outline" />}
-                  />
-                </TouchableOpacity>
-                <Divider />
-              </>
-            )}
-            style={styles.list}
-            keyboardShouldPersistTaps="handled"
-          />
+          {loading && results.length === 0 ? (
+            <ActivityIndicator style={{ padding: 20 }} color={Colors.primary} />
+          ) : (
+            <FlatList
+              data={results}
+              keyExtractor={(item) => item.place_id.toString()}
+              renderItem={({ item }) => (
+                <>
+                  <TouchableOpacity onPress={() => handleSelect(item)}>
+                    <List.Item
+                      title={item.display_name}
+                      titleNumberOfLines={2}
+                      titleStyle={styles.resultTitle}
+                      left={props => <List.Icon {...props} icon="map-marker-outline" />}
+                    />
+                  </TouchableOpacity>
+                  <Divider />
+                </>
+              )}
+              style={styles.list}
+              keyboardShouldPersistTaps="handled"
+              ListEmptyComponent={() => !loading && query.length > 2 ? (
+                <Text style={styles.emptyText}>Nie znaleziono miejscowości.</Text>
+              ) : null}
+            />
+          )}
         </View>
       )}
     </View>
@@ -123,7 +142,7 @@ export default function LocationPicker({
 
 const styles = StyleSheet.create({
   container: {
-    zIndex: 1000,
+    zIndex: 2000, // Zwiększony zIndex dla całego kontenera
     position: 'relative',
     width: '100%',
   },
@@ -136,22 +155,28 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderRadius: 8,
     marginTop: 4,
-    maxHeight: 200,
-    elevation: 5,
+    maxHeight: 250,
+    elevation: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
     position: 'absolute',
     top: 55,
     left: 0,
     right: 0,
-    zIndex: 2000,
+    zIndex: 3000, // Jeszcze wyższy zIndex dla wyników
   },
   list: {
     flexGrow: 0,
   },
   resultTitle: {
     fontSize: 14,
+  },
+  emptyText: {
+    padding: 20,
+    textAlign: 'center',
+    color: Colors.textLight,
+    fontFamily: 'Montserrat_400Regular',
   }
 });
