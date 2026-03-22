@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { Platform } from 'react-native';
+import * as Device from 'expo-device';
 
 export interface LogEntry {
   id: string;
   timestamp: string;
-  level: 'info' | 'error' | 'warn';
+  level: 'info' | 'error' | 'warn' | 'network' | 'debug';
   message: string;
   details?: any;
 }
@@ -13,7 +15,7 @@ type LogListener = (entry: LogEntry) => void;
 class Logger {
   private logs: LogEntry[] = [];
   private listeners: Set<LogListener> = new Set();
-  private maxLogs = 100;
+  private maxLogs = 200;
 
   info(message: string, details?: any) {
     this.addLog('info', message, details);
@@ -27,6 +29,14 @@ class Logger {
     this.addLog('error', message, details);
   }
 
+  network(message: string, details?: any) {
+    this.addLog('network', message, details);
+  }
+
+  debug(message: string, details?: any) {
+    this.addLog('debug', message, details);
+  }
+
   private addLog(level: LogEntry['level'], message: string, details?: any) {
     const entry: LogEntry = {
       id: Math.random().toString(36).substring(7),
@@ -37,7 +47,19 @@ class Logger {
     };
 
     this.logs = [entry, ...this.logs].slice(0, this.maxLogs);
-    console.log(`[${level.toUpperCase()}] ${message}`, details || '');
+    
+    // Konsola w trybie deweloperskim
+    if (__DEV__) {
+      const color = {
+        info: '\x1b[32m', // green
+        warn: '\x1b[33m', // yellow
+        error: '\x1b[31m', // red
+        network: '\x1b[36m', // cyan
+        debug: '\x1b[35m'  // magenta
+      }[level];
+      console.log(`${color}[${level.toUpperCase()}] ${message}\x1b[0m`, details || '');
+    }
+    
     this.notify(entry);
   }
 
@@ -54,6 +76,17 @@ class Logger {
 
   getLogs() {
     return this.logs;
+  }
+
+  getDeviceInfo() {
+    return {
+      brand: Device.brand,
+      modelName: Device.modelName,
+      osName: Device.osName,
+      osVersion: Device.osVersion,
+      platform: Platform.OS,
+      isDevice: Device.isDevice,
+    };
   }
 
   clear() {
@@ -74,5 +107,9 @@ export function useLogs() {
     });
   }, []);
 
-  return { logs, clearLogs: () => logger.clear() };
+  return { 
+    logs, 
+    clearLogs: () => logger.clear(),
+    deviceInfo: logger.getDeviceInfo()
+  };
 }

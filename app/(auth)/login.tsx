@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { supabase } from '../../src/lib/supabase';
+import { logger } from '../../src/lib/logger';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -16,22 +17,28 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Błąd', 'Proszę podać e-mail i hasło.');
+      Alert.alert('Błąd', 'Wypełnij wszystkie pola.');
       return;
     }
 
-    setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      setLoading(true);
+      logger.info('Próba logowania', { email });
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
-
+      if (error) {
+        logger.error('Błąd logowania Supabase', error);
+        throw error;
+      }
+      
+      logger.info('Zalogowano pomyślnie', { userId: data.user?.id });
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Błąd logowania', error.message || 'Nieprawidłowe dane logowania.');
+      Alert.alert('Błąd logowania', error.message);
     } finally {
       setLoading(false);
     }
