@@ -300,52 +300,50 @@ export default function SwipeScreen() {
       >
         <LinearGradient
           colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)', 'rgba(0,0,0,0.95)']}
-          locations={[0, 0.2, 0.4, 0.6, 0.9]}
+          locations={[0, 0.15, 0.4, 0.6, 0.9]}
           style={styles.gradient}
         >
-          {/* TOP SECTION: Badges spread out */}
+          {/* TOP SECTION */}
           <View style={styles.topBadgesRow}>
             {item.matchScore ? (
               <View style={styles.matchBadgeModern}>
-                <MaterialCommunityIcons name="flash" size={14} color={Colors.primary} />
-                <Text style={styles.matchTextModern}>{item.matchScore}% DOPASOWANIA</Text>
+                <MaterialCommunityIcons name="flash" size={12} color={Colors.primary} />
+                <Text style={styles.matchTextModern}>{item.matchScore}%</Text>
               </View>
             ) : <View />}
             
             <View style={styles.distanceBadgeModern}>
-              <MaterialCommunityIcons name="map-marker-distance" size={14} color="#fff" />
-              <Text style={styles.distanceTextModern}>W TWOJEJ OKOLICY</Text>
+              <MaterialCommunityIcons name="map-marker-outline" size={12} color="#fff" />
+              <Text style={styles.distanceTextModern}>BLISKO CIEBIE</Text>
             </View>
           </View>
           
-          {/* MIDDLE SECTION: Large visual elements to fill space */}
+          {/* MIDDLE SECTION */}
           <View style={styles.middleContainerModern}>
             {item.isBlurred ? (
               <View style={styles.lockContainerModern}>
                 <View style={styles.lockIconCircle}>
-                  <MaterialCommunityIcons name="shield-lock" size={50} color={Colors.primary} />
+                  <MaterialCommunityIcons name="shield-lock" size={40} color={Colors.primary} />
                 </View>
-                <Text style={styles.lockText}>Profil ukryty (Blind Hiring)</Text>
-                <Text style={styles.lockSubtext}>Zdjęcie zobaczysz po dopasowaniu</Text>
+                <Text style={styles.lockText}>Profil ukryty</Text>
               </View>
             ) : (
               <View style={styles.priceCenterContainer}>
                 <View style={styles.priceBadgeLarge}>
-                  <Text style={styles.priceLabelLarge}>STAWKA GODZINOWA</Text>
                   <Text style={styles.priceValueLarge}>{item.price}</Text>
                 </View>
               </View>
             )}
           </View>
 
-          {/* BOTTOM SECTION: Detailed information */}
+          {/* BOTTOM SECTION */}
           <View style={styles.overlayContentModern}>
             <View style={styles.headerRowModern}>
               <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={styles.cardTitleModern}>{item.title}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.cardTitleModern} numberOfLines={1}>{item.title.split(',')[0]}</Text>
                   {item.isVerified && (
-                    <MaterialCommunityIcons name="check-decagram" size={24} color={Colors.primary} />
+                    <MaterialCommunityIcons name="check-decagram" size={20} color={Colors.primary} />
                   )}
                 </View>
                 <Text style={styles.cardSubtitleModern}>{item.subtitle}</Text>
@@ -354,30 +352,23 @@ export default function SwipeScreen() {
 
             <View style={styles.infoSectionModern}>
               {(item.description || item.bio) && (
-                <View style={styles.descriptionBoxModern}>
-                  <Text style={styles.cardDescriptionModern} numberOfLines={3}>
-                    {item.description || item.bio}
-                  </Text>
-                </View>
+                <Text style={styles.cardDescriptionModern} numberOfLines={2}>
+                  {item.description || item.bio}
+                </Text>
               )}
 
               {item.type === 'candidate' && item.experienceHistory && item.experienceHistory.length > 0 && (
                 <View style={styles.experienceSnippetModern}>
-                  <MaterialCommunityIcons name="history" size={16} color={Colors.primary} style={{ marginRight: 8 }} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.experienceLabelModern}>OSTATNIE DOŚWIADCZENIE:</Text>
-                    <Text style={styles.experienceValueModern} numberOfLines={1}>
-                      {item.experienceHistory[0].position} @ {item.experienceHistory[0].company}
-                    </Text>
-                  </View>
+                  <Text style={styles.experienceValueModern} numberOfLines={1}>
+                    💼 {item.experienceHistory[0].position}
+                  </Text>
                 </View>
               )}
             </View>
 
             <View style={styles.tagGridModern}>
-              {item.tags.map((tag, i) => (
+              {item.tags.slice(0, 3).map((tag, i) => (
                 <View key={i} style={styles.tagModern}>
-                  <MaterialCommunityIcons name={tag.icon as any} size={14} color={Colors.primary} />
                   <Text style={styles.tagTextModern}>{tag.text}</Text>
                 </View>
               ))}
@@ -600,55 +591,40 @@ const styles = StyleSheet.create({
   },
   priceBadgeLarge: {
     backgroundColor: 'rgba(0,0,0,0.4)',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 20,
-    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
-    backdropFilter: 'blur(10px)',
-  },
-  priceLabelLarge: {
-    fontSize: 10,
-    fontFamily: 'Montserrat_700Bold',
-    color: Colors.primary,
-    letterSpacing: 2, 
-    marginBottom: 6,
   },
   priceValueLarge: {
     color: '#fff',
     fontFamily: 'Montserrat_900Black',
-    fontSize: 24,
+    fontSize: 20,
   },
   lockContainerModern: {
     alignItems: 'center',
-    gap: 15,
+    gap: 10,
   },
   lockIconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.2)',
   },
   lockText: {
     color: '#fff',
     fontFamily: 'Montserrat_800ExtraBold',
-    fontSize: 18,
-    textAlign: 'center',
-  },
-  lockSubtext: {
-    color: 'rgba(255,255,255,0.6)',
-    fontFamily: 'Montserrat_400Regular',
-    fontSize: 13, 
-    marginTop: 4,
+    fontSize: 16,
     textAlign: 'center',
   },
   overlayContentModern: {
-    gap: 16,
+    gap: 12,
     paddingBottom: 5,
   },
   headerRowModern: {
@@ -657,75 +633,60 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardTitleModern: {
-    fontSize: 30,
+    fontSize: 24,
     fontFamily: 'Montserrat_900Black',
-    color: '#fff', 
-    lineHeight: 34,
+    color: '#fff',
+    lineHeight: 28,
   },
   cardSubtitleModern: {
     fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 17,
+    fontSize: 15,
     color: 'rgba(255,255,255,0.85)',
-    marginTop: 4,
+    marginTop: 2,
   },
   infoSectionModern: {
-    gap: 12,
-  },
-  descriptionBoxModern: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    padding: 14,
-    borderRadius: 14, 
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.primary,
+    gap: 8,
   },
   experienceSnippetModern: {
     flexDirection: 'row',
     backgroundColor: 'rgba(0,0,0,0.4)',
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1, 
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
   },
-  experienceLabelModern: {
-    fontSize: 9, 
-    fontFamily: 'Montserrat_700Bold',
-    color: Colors.primary,
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
   experienceValueModern: {
-    color: '#fff', 
+    color: '#fff',
     fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 14,
+    fontSize: 13,
   },
   cardDescriptionModern: {
     fontFamily: 'Montserrat_400Regular',
-    fontSize: 14,
+    fontSize: 13,
     color: 'rgba(255,255,255,0.95)',
-    lineHeight: 20,
+    lineHeight: 18,
     fontStyle: 'italic',
   },
   tagGridModern: {
-    flexDirection: 'row', 
+    flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   tagModern: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    gap: 8,
-    borderWidth: 1, 
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   tagTextModern: {
     color: '#fff',
     fontFamily: 'Montserrat_500Medium',
-    fontSize: 13,
+    fontSize: 11,
   },
   tagMoreModern: {
     backgroundColor: 'rgba(255,255,255,0.15)',
