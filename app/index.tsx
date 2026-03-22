@@ -12,11 +12,21 @@ const { width, height } = Dimensions.get('window');
 
 export default function LandingScreen() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Sesja jest teraz obsługiwana globalnie w app/_layout.tsx
-  // Nie potrzebujemy tu checkSession()
-
+  useEffect(() => {
+    // Sprawdzamy sesję TYLKO raz przy wejściu na stronę startową
+    const checkSession = async () => {
+      // getUser() jest pewniejsze niż getSession(), bo weryfikuje token
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        router.replace('/(tabs)');
+      } else {
+        setLoading(false);
+      }
+    };
+    checkSession();
+  }, []);
 
   if (loading) {
     return (

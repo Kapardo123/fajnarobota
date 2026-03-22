@@ -62,16 +62,13 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     logger.action('Wyloguj (Global)');
     try {
-      setLoading(true);
-      // Wywołujemy tylko signOut. 
-      // Globalny listener w app/_layout.tsx wykryje zmianę i przekieruje nas do root.
+      // Wywołujemy signOut. 
+      // Globalny listener w app/_layout.tsx wykryje zdarzenie 'SIGNED_OUT' i nas przekieruje.
       await supabase.auth.signOut();
     } catch (error: any) {
       console.error('Logout error:', error);
-      // W razie błędu wymuszamy powrót
+      // W razie błędu i tak próbujemy wrócić do root
       router.replace('/');
-    } finally {
-      setLoading(false);
     }
   };
 

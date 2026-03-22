@@ -39,18 +39,37 @@ export default function RootLayout() {
   useEffect(() => {
     if (!loaded) return;
 
+    // Początkowe sprawdzenie sesji przy załadowaniu aplikacji
+    const checkInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && segments.length === 0) {
+        console.log('Auth: Initial session found, redirecting to tabs...');
+        router.replace('/(tabs)');
+      }
+    };
+    checkInitialSession();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth Event:', event, session ? 'User logged in' : 'User logged out');
       
-      const inAuthGroup = segments[0] === '(auth)';
       const inTabsGroup = segments[0] === '(tabs)';
-
+      
+      // Jeśli sesja wygasła lub została usunięta, a jesteśmy w tabsach
       if (!session && inTabsGroup) {
-        // Użytkownik wylogowany, a jest w zakładkach -> rzuć go na start
         router.replace('/');
-      } else if (session && (inAuthGroup || segments.length === 0 || segments[0] === 'index')) {
-        // Użytkownik zalogowany, a jest na logowaniu/rejestracji/startowej -> rzuć go do aplikacji
+        return;
+      }
+
+      // TYLKO jeśli zdarzenie to logowanie, wymuś wejście do tabsów
+      if (event === 'SIGNED_IN' && session && !inTabsGroup) {
+        console.log('Auth: User signed in, redirecting to tabs...');
         router.replace('/(tabs)');
+      }
+
+      // Po wylogowaniu upewniamy się, że nie ma żadnego przekierowania do tabsów
+      if (event === 'SIGNED_OUT') {
+        console.log('Auth: User signed out, redirecting to hero...');
+        router.replace('/');
       }
     });
 
