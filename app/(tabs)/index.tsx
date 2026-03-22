@@ -1245,7 +1245,7 @@ const styles = StyleSheet.create({
     margin: 20,
     borderRadius: 12,
   },
-});  tagMoreTextModern: {
+  tagMoreTextModern: {
     color: Colors.primary,
     fontFamily: 'Montserrat_700Bold',
     fontSize: 12,
