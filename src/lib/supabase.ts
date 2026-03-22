@@ -28,7 +28,7 @@ export const uploadAvatar = async (uri: string, userId: string) => {
     } else {
       // Bardziej niezawodna metoda konwersji na Blob dla Android/iOS
       const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64',
       });
       const byteCharacters = atob(base64);
       const byteNumbers = new Array(byteCharacters.length);

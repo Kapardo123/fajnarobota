@@ -296,7 +296,10 @@ export default function SwipeScreen() {
         source={{ uri: item.image }}
         style={styles.cardImage}
         blurRadius={item.isBlurred ? 40 : 0}
-        imageStyle={{ opacity: item.isBlurred ? 0.7 : 1 }}
+        imageStyle={{ 
+          opacity: item.isBlurred ? 0.7 : 1,
+          resizeMode: 'cover' // Zapewnia wycentrowanie i wypełnienie całej karty
+        }}
       >
         <LinearGradient
           colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)', '#000']}

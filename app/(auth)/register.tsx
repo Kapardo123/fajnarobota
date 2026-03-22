@@ -10,12 +10,17 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase, uploadAvatar } from '../../src/lib/supabase';
 import { logger } from '../../src/lib/logger';
 import LocationPicker from '../../components/LocationPicker';
+import ImageEditorModal from '../../components/ImageEditorModal';
 
 export default function RegisterScreen() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [role, setRole] = useState<'candidate' | 'employer'>('candidate');
   const [loading, setLoading] = useState(false);
+
+  // Image editing state
+  const [editorVisible, setEditorVisible] = useState(false);
+  const [tempImageUri, setTempImageUri] = useState<string | null>(null);
 
   // Auth data
   const [email, setEmail] = useState('');
@@ -62,23 +67,27 @@ export default function RegisterScreen() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.5,
+        allowsEditing: false, // Wyłączamy wbudowane edytowanie, użyjemy własnego
+        quality: 0.8,
       });
 
       if (!result.canceled) {
-        const uri = result.assets[0].uri;
-        if (role === 'candidate') {
-          setCandidateData(prev => ({ ...prev, photoUrl: uri }));
-        } else {
-          setEmployerData(prev => ({ ...prev, photoUrl: uri }));
-        }
+        setTempImageUri(result.assets[0].uri);
+        setEditorVisible(true);
       }
     } catch (error) {
       console.error('Error picking image:', error);
       Alert.alert('Błąd', 'Nie udało się otworzyć galerii zdjęć.');
     }
+  };
+
+  const handleSaveImage = (uri: string) => {
+    if (role === 'candidate') {
+      setCandidateData(prev => ({ ...prev, photoUrl: uri }));
+    } else {
+      setEmployerData(prev => ({ ...prev, photoUrl: uri }));
+    }
+    setEditorVisible(false);
   };
 
   const handleFinish = async () => {
@@ -708,7 +717,7 @@ export default function RegisterScreen() {
             <View style={styles.photoContainer}>
               <Image 
                 source={{ uri: candidateData.photoUrl }} 
-                style={styles.photoPreview} 
+                style={[styles.photoPreview, { resizeMode: 'cover' }]} 
               />
               <Button 
                 mode="outlined" 
@@ -769,6 +778,13 @@ export default function RegisterScreen() {
           {step === (role === 'candidate' ? 6 : 4) ? 'Zakończ' : 'Dalej'}
         </Button>
       </View>
+
+      <ImageEditorModal 
+        visible={editorVisible}
+        imageUri={tempImageUri}
+        onSave={handleSaveImage}
+        onCancel={() => setEditorVisible(false)}
+      />
     </SafeAreaView>
   );
 }

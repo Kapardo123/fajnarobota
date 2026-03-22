@@ -9,6 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase, uploadAvatar } from '../../src/lib/supabase';
 import { logger } from '../../src/lib/logger';
 import LocationPicker from '../../components/LocationPicker';
+import ImageEditorModal from '../../components/ImageEditorModal';
 
 interface JobOffer {
   id: string;
@@ -78,6 +79,10 @@ export default function ProfileScreen() {
   const [tempExp, setTempExp] = useState({ company: '', position: '', period: '' });
   const [uploading, setUploading] = useState(false);
 
+  // Image editing state
+  const [editorVisible, setEditorVisible] = useState(false);
+  const [tempImageUri, setTempImageUri] = useState<string | null>(null);
+
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -146,25 +151,36 @@ export default function ProfileScreen() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.5,
+        allowsEditing: false, // Wyłączamy wbudowane edytowanie
+        quality: 0.8,
       });
 
       if (!result.canceled && profile) {
-        setUploading(true);
-        const publicUrl = await uploadAvatar(result.assets[0].uri, profile.id);
-        
-        const { error } = await supabase
-          .from('profiles')
-          .update({ avatar_url: publicUrl })
-          .eq('id', profile.id);
-
-        if (error) throw error;
-
-        setProfile({ ...profile, avatar_url: publicUrl });
-        Alert.alert('Sukces', 'Zdjęcie profilowe zostało zaktualizowane.');
+        setTempImageUri(result.assets[0].uri);
+        setEditorVisible(true);
       }
+    } catch (error: any) {
+      Alert.alert('Błąd', 'Nie udało się otworzyć galerii zdjęć.');
+    }
+  };
+
+  const handleSaveEditedImage = async (uri: string) => {
+    if (!profile) return;
+    
+    try {
+      setEditorVisible(false);
+      setUploading(true);
+      const publicUrl = await uploadAvatar(uri, profile.id);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', profile.id);
+
+      if (error) throw error;
+
+      setProfile({ ...profile, avatar_url: publicUrl });
+      Alert.alert('Sukces', 'Zdjęcie profilowe zostało zaktualizowane.');
     } catch (error: any) {
       Alert.alert('Błąd', 'Nie udało się zaktualizować zdjęcia.');
     } finally {
@@ -1052,6 +1068,13 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      <ImageEditorModal 
+        visible={editorVisible}
+        imageUri={tempImageUri}
+        onSave={handleSaveEditedImage}
+        onCancel={() => setEditorVisible(false)}
+      />
     </ScrollView>
   );
 }
