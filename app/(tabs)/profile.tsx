@@ -60,26 +60,31 @@ export default function ProfileScreen() {
   }, []);
 
   const handleLogout = async () => {
-    logger.action('Wyloguj (Próba)');
+    logger.action('Wyloguj (Pełne)');
     
     try {
-      // 1. Supabase SignOut (nie czekamy na wynik, żeby nie blokować)
-      supabase.auth.signOut().catch(e => console.error('SignOut error:', e));
+      setLoading(true);
+      
+      // 1. Czekamy na faktyczne wylogowanie w Supabase
+      // To jest kluczowe, aby app/index.tsx nie zobaczyło starej sesji
+      await supabase.auth.signOut();
       
       // 2. Czyścimy stan lokalny
       setProfile(null);
       setCandidateDetails(null);
       setEmployerDetails(null);
       
-      // 3. Wymuszamy nawigację do root
-      // Używamy setTimeout, aby upewnić się, że żadne inne procesy nie blokują routera
-      setTimeout(() => {
-        router.replace('/');
-      }, 0);
+      console.log('--- LOGOUT SUCCESSFUL, REDIRECTING TO HERO ---');
+      
+      // 3. Przekierowanie do root (hero page)
+      router.replace('/');
       
     } catch (error: any) {
-      console.error('Logout error:', error);
+      logger.error('Logout error', error);
+      // Nawet w przypadku błędu próbujemy uciec z tego ekranu
       router.replace('/');
+    } finally {
+      setLoading(false);
     }
   };
 
