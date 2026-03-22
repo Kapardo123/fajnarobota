@@ -60,30 +60,34 @@ export default function ProfileScreen() {
   }, []);
 
   const handleLogout = async () => {
-    logger.action('Wyloguj (Pełne)');
+    logger.action('Wyloguj (Próba)');
     
     try {
       setLoading(true);
-      console.log('Profile: Starting SignOut...');
+      console.log('Profile: SignOut starting...');
       
       // 1. Wyloguj w Supabase
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('SignOut error:', error);
+        // Kontynuujemy mimo błędu, bo chcemy wylogować lokalnie
+      }
       
-      // 2. Dodatkowe wymuszone opóźnienie, aby Supabase na pewno wyczyściło storage
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // 2. Dłuższy timeout, żeby mieć pewność, że storage został wyczyszczony
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // 3. Czyścimy stan lokalny
+      // 3. Czyścimy stan lokalny profilu
       setProfile(null);
       setCandidateDetails(null);
       setEmployerDetails(null);
       
-      console.log('Profile: SignOut done, redirecting...');
+      console.log('Profile: Local state cleared, redirecting...');
       
       // 4. Przekierowanie do root (hero page)
       router.replace('/');
       
     } catch (error: any) {
-      logger.error('Logout error', error);
+      console.error('Logout fatal error:', error);
       router.replace('/');
     } finally {
       setLoading(false);

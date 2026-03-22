@@ -20,17 +20,18 @@ export default function LandingScreen() {
 
   const checkSession = async () => {
     try {
-      console.log('Landing: Checking session...');
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Landing: Checking session via getUser()...');
+      // getUser() jest pewniejsze niż getSession(), bo weryfikuje token
+      const { data: { user }, error } = await supabase.auth.getUser();
       
-      if (session) {
-        console.log('Landing: Session found, redirecting to tabs');
+      if (user && !error) {
+        console.log('Landing: User found, redirecting to tabs', user.id);
         router.replace('/(tabs)');
       } else {
-        console.log('Landing: No session, staying on hero page');
+        console.log('Landing: No active session or error, staying on hero page');
       }
     } catch (e) {
-      console.error('Session check failed', e);
+      console.error('Landing: Session check critical failure', e);
     } finally {
       setLoading(false);
     }
