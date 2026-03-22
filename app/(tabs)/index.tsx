@@ -541,7 +541,13 @@ export default function SwipeScreen() {
                     </View>
                     <Text style={styles.cardSubtitleModern}>{item.subtitle}</Text>
                   </View>
-                  <IconButton icon="information-outline" iconColor="#fff" size={24} onPress={toggleFlip} style={{ backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                  <IconButton 
+                    icon="gesture-tap" 
+                    iconColor={Colors.primary} 
+                    size={28} 
+                    onPress={toggleFlip} 
+                    style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: Colors.primary }} 
+                  />
                 </View>
 
                 <View style={styles.infoSectionModern}>
