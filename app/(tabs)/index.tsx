@@ -176,7 +176,7 @@ export default function SwipeScreen() {
         if (candidates) {
           const candidateCards: CardData[] = candidates.map(cand => {
             const fullName = cand.profiles?.full_name || 'Kandydat';
-            const age = cand.age ? `, ${cand.age}` : '';
+            const age = cand.age ? ` ${cand.age}` : '';
             
             return {
               id: cand.id,
