@@ -15,8 +15,7 @@ create table public.candidates (
   skills text[],
   superpower text,
   experience text check (experience in ('Junior', 'Mid', 'Senior')),
-  blind_hiring boolean default false,
-  avatar_traits jsonb
+  blind_hiring boolean default false
 );
 
 -- Tabela pracodawców (szczegóły firmy)

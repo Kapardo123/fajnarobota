@@ -29,6 +29,7 @@ export default function SwipeScreen() {
   const [matchVisible, setMatchVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<CardData[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const position = useRef(new Animated.ValueXY()).current;
   const router = useRouter();
 
@@ -44,9 +45,11 @@ export default function SwipeScreen() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('*')
         .eq('id', user.id)
         .single();
+      
+      setUserProfile(profile);
 
       // Pobierz ID już przesuniętych kart
       const { data: swiped } = await supabase
@@ -353,13 +356,13 @@ export default function SwipeScreen() {
             <Text style={styles.matchTitle}>FAJNA ROBOTA! 🤩</Text>
             
             <View style={styles.matchAvatars}>
-              {cards.length >= 2 && (
+              {index < cards.length && (
                 <>
                   <View style={styles.avatarCircle}>
-                    <Image source={{ uri: cards[0].image }} style={styles.avatarImg} />
+                    <Image source={{ uri: userProfile?.avatar_url }} style={styles.avatarImg} />
                   </View>
                   <View style={[styles.avatarCircle, styles.avatarOverlap]}>
-                    <Image source={{ uri: cards[1].image }} style={styles.avatarImg} />
+                    <Image source={{ uri: cards[index].image }} style={styles.avatarImg} />
                   </View>
                 </>
               )}

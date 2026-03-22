@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { SvgUri } from 'react-native-svg';
 import { supabase } from '../../src/lib/supabase';
 
 export default function RegisterScreen() {
@@ -27,17 +26,8 @@ export default function RegisterScreen() {
     superpower: '',
     experience: 'Junior',
     profileMode: 'real' as 'real' | 'avatar' | 'work',
-    blindHiring: false,
-    avatarSeed: Math.random().toString(36).substring(7),
-    avatarTraits: {
-      top: 'bigHair',
-      eyes: 'default',
-      mouth: 'smile',
-      clothing: 'graphicShirt',
-      clothesColor: '65c9ff',
-      skinColor: 'ffdbb4',
-      hairColor: '2c1b18',
-    },
+    blindHiring: true, // Domyślnie włączone
+    photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop', // Przykładowe zdjęcie
   });
 
   // Employer data
@@ -46,70 +36,8 @@ export default function RegisterScreen() {
     position: '',
     salaryRange: '',
     description: '',
+    photoUrl: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?q=80&w=200&auto=format&fit=crop', // Przykładowe zdjęcie firmy
   });
-
-  const AVATAR_OPTIONS = {
-    top: [
-      'bigHair', 'bob', 'bun', 'curly', 'curvy', 'dreads', 'shaggy', 'shortCurly', 
-      'shortFlat', 'shortRound', 'shortWaved', 'straight01', 'straight02', 
-      'theCaesar', 'turban', 'winterHat1', 'miaWallace', 'shavedSides'
-    ],
-    eyes: [
-      'default', 'happy', 'surprised', 'wink', 'side', 'squint', 'hearts', 
-      'eyeRoll', 'winkWacky', 'xDizzy', 'closed', 'cry'
-    ],
-    mouth: [
-      'smile', 'default', 'serious', 'tongue', 'twinkle', 'grimace', 'concerned', 
-      'disbelief', 'eating', 'sad', 'screamOpen', 'vomit'
-    ],
-    clothing: [
-      'graphicShirt', 'blazerAndShirt', 'blazerAndSweater', 'collarAndSweater', 
-      'hoodie', 'overall', 'shirtCrewNeck', 'shirtScoopNeck', 'shirtVNeck'
-    ],
-    clothesColor: [
-      '262e33', '65c9ff', '5199e4', '25557c', 'e6e6e6', '929598', '3c4f5c', 
-      'b1e2ff', 'a7ffc4', 'ffdeb5', 'ffafb9', 'ffffb1', 'ff488e', 'ff5c5c', 'ffffff'
-    ],
-    skinColor: [
-      '614335', 'd08b5b', 'ae5d29', 'edb98a', 'ffdbb4', 'fd9841', 'f8d25c'
-    ],
-    hairColor: [
-      'a55728', '2c1b18', 'b58143', 'd6b370', '724133', '4a312c', 'f59797', 'ecdcbf', 'c93305', 'e8e1e1'
-    ],
-  };
-
-  const getAvatarUrl = (seed: string, traits: typeof candidateData.avatarTraits) => {
-    const { top, eyes, mouth, clothing, clothesColor, skinColor, hairColor } = traits;
-    // Wersja 9.x DiceBear wymaga precyzyjnych wartości. backgroundType=solid i backgroundColor jako lista hexów bez hasha.
-    return `https://api.dicebear.com/9.x/avataaars/svg?seed=${seed}&top=${top}&eyes=${eyes}&mouth=${mouth}&clothing=${clothing}&clothesColor=${clothesColor}&skinColor=${skinColor}&hairColor=${hairColor}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
-  };
-
-  const updateTrait = (category: keyof typeof AVATAR_OPTIONS, value: string) => {
-    setCandidateData({
-      ...candidateData,
-      avatarTraits: {
-        ...candidateData.avatarTraits,
-        [category]: value
-      }
-    });
-  };
-
-  const rollAvatar = () => {
-    const randomTrait = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
-    setCandidateData({
-      ...candidateData,
-      avatarSeed: Math.random().toString(36).substring(7),
-      avatarTraits: {
-        top: randomTrait(AVATAR_OPTIONS.top),
-        eyes: randomTrait(AVATAR_OPTIONS.eyes),
-        mouth: randomTrait(AVATAR_OPTIONS.mouth),
-        clothing: randomTrait(AVATAR_OPTIONS.clothing),
-        clothesColor: randomTrait(AVATAR_OPTIONS.clothesColor),
-        skinColor: randomTrait(AVATAR_OPTIONS.skinColor),
-        hairColor: randomTrait(AVATAR_OPTIONS.hairColor),
-      }
-    });
-  };
 
   const SKILLS_LIST = ['Gastronomia', 'Barista', 'Sprzedawca', 'Obsługa klienta', 'Magazynier', 'Student', 'Angielski B2', 'Kierowca'];
   const SUPERPOWERS = ['#OgarniamChaos', '#NigdyNieSpóźniony', '#MistrzExcela', '#UśmiechNaTwarzy', '#SzybkiJakBłyskawica'];
@@ -135,7 +63,7 @@ export default function RegisterScreen() {
           id: userId,
           role,
           full_name: role === 'candidate' ? candidateData.name : employerData.companyName,
-          avatar_url: role === 'candidate' ? getAvatarUrl(candidateData.avatarSeed, candidateData.avatarTraits) : 'https://picsum.photos/seed/company/200',
+          avatar_url: role === 'candidate' ? candidateData.photoUrl : employerData.photoUrl,
         });
 
       if (profileError) throw profileError;
@@ -152,7 +80,6 @@ export default function RegisterScreen() {
             superpower: candidateData.superpower,
             experience: candidateData.experience,
             blind_hiring: candidateData.blindHiring,
-            avatar_traits: candidateData.avatarTraits,
           });
         if (candidateError) throw candidateError;
       } else {
@@ -169,7 +96,14 @@ export default function RegisterScreen() {
       Alert.alert('Sukces!', 'Twoje konto zostało utworzone.');
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Błąd', error.message || 'Wystąpił nieoczekiwany błąd.');
+      let errorMessage = error.message || 'Wystąpił nieoczekiwany błąd.';
+      
+      // Specyficzna obsługa błędu rate limit w Supabase
+      if (error.status === 429 || errorMessage.includes('rate_limit')) {
+        errorMessage = 'Przekroczono limit wysyłania e-maili w Supabase (Free Tier). Wyłącz "Confirm Email" w ustawieniach Supabase Auth lub spróbuj ponownie za godzinę.';
+      }
+
+      Alert.alert('Błąd rejestracji', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -401,54 +335,35 @@ export default function RegisterScreen() {
       case 5:
         return role === 'candidate' ? (
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Twój Bohater</Text>
-            <Text style={styles.stepSubtitle}>Dostosuj swój awatar i ustaw widoczność.</Text>
+            <Text style={styles.stepTitle}>Twoje zdjęcie</Text>
+            <Text style={styles.stepSubtitle}>Dodaj zdjęcie profilowe i ustaw widoczność.</Text>
+
+            <View style={styles.photoContainer}>
+              <Image 
+                source={{ uri: candidateData.photoUrl }} 
+                style={styles.photoPreview} 
+              />
+              <Button 
+                mode="outlined" 
+                onPress={() => {}} // Tu w przyszłości wybór zdjęcia
+                style={styles.uploadBtn}
+                textColor={Colors.primary}
+                icon="camera"
+              >
+                Zmień zdjęcie
+              </Button>
+            </View>
 
             <View style={styles.privacyCard}>
               <View style={styles.privacyInfo}>
                 <Text style={styles.privacyTitle}>Tryb Blind Hiring</Text>
-                <Text style={styles.privacySubtitle}>Rozmyj zdjęcie do momentu Matcha</Text>
+                <Text style={styles.privacySubtitle}>Zdjęcie będzie rozmyte do momentu Matcha</Text>
               </View>
               <Switch 
                 value={candidateData.blindHiring} 
                 onValueChange={(val) => setCandidateData({...candidateData, blindHiring: val})}
                 color={Colors.primary}
               />
-            </View>
-
-            <View style={styles.avatarGeneratorContainer}>
-              <View style={styles.avatarPreviewFrame}>
-                <SvgUri
-                  width="120"
-                  height="120"
-                  uri={getAvatarUrl(candidateData.avatarSeed, candidateData.avatarTraits)}
-                />
-              </View>
-              
-              <View style={styles.traitSelectors}>
-                {[
-                  { key: 'top', label: 'Włosy', icon: 'face-man' },
-                  { key: 'clothesColor', label: 'Ubranie', icon: 'palette' },
-                  { key: 'hairColor', label: 'Kolor', icon: 'palette-swatch' },
-                ].map((trait) => (
-                  <View key={trait.key} style={styles.traitRow}>
-                    <Text style={styles.traitLabel}>{trait.label}</Text>
-                    <View style={styles.traitActionCol}>
-                      <IconButton icon="chevron-left" size={20} onPress={() => {
-                        const options = AVATAR_OPTIONS[trait.key as keyof typeof AVATAR_OPTIONS];
-                        const currentIdx = options.indexOf(candidateData.avatarTraits[trait.key as keyof typeof candidateData.avatarTraits]);
-                        updateTrait(trait.key as any, options[(currentIdx - 1 + options.length) % options.length]);
-                      }} />
-                      <IconButton icon="chevron-right" size={20} onPress={() => {
-                        const options = AVATAR_OPTIONS[trait.key as keyof typeof AVATAR_OPTIONS];
-                        const currentIdx = options.indexOf(candidateData.avatarTraits[trait.key as keyof typeof candidateData.avatarTraits]);
-                        updateTrait(trait.key as any, options[(currentIdx + 1) % options.length]);
-                      }} />
-                    </View>
-                  </View>
-                ))}
-              </View>
-              <Button mode="text" onPress={rollAvatar} icon="refresh" textColor={Colors.primary}>Losuj</Button>
             </View>
           </View>
         ) : null;
@@ -621,42 +536,21 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     marginTop: 2,
   },
-  avatarGeneratorContainer: {
-    marginTop: 24,
+  photoContainer: {
     alignItems: 'center',
+    gap: 16,
+    marginTop: 24,
+  },
+  photoPreview: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     backgroundColor: Colors.background,
-    padding: 24,
-    borderRadius: 24,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  avatarPreviewFrame: {
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 60,
-    elevation: 4,
-    marginBottom: 20,
-  },
-  traitSelectors: {
-    width: '100%',
-    gap: 8,
-  },
-  traitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    paddingLeft: 16,
+  uploadBtn: {
     borderRadius: 12,
-    height: 44,
-  },
-  traitLabel: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 14,
-    color: Colors.text,
-  },
-  traitActionCol: {
-    flexDirection: 'row',
   },
   summaryCard: {
     alignItems: 'center',

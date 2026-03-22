@@ -5,7 +5,6 @@ import { Colors } from '../../constants/Colors';
 import { useState, useEffect } from 'react';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { supabase } from '../../src/lib/supabase';
-import { SvgUri } from 'react-native-svg';
 
 interface JobOffer {
   id: string;
@@ -158,11 +157,7 @@ export default function ProfileScreen() {
     <>
       <View style={styles.header}>
         <View style={styles.avatarFrame}>
-          {profile?.avatar_url && profile.avatar_url.includes('.svg') ? (
-            <SvgUri width="100" height="100" uri={profile.avatar_url} />
-          ) : (
-            <Avatar.Image size={100} source={{ uri: profile?.avatar_url }} style={styles.avatar} />
-          )}
+          <Avatar.Image size={100} source={{ uri: profile?.avatar_url }} style={styles.avatar} />
         </View>
         <Text variant="headlineSmall" style={styles.name}>{profile?.full_name}</Text>
         {candidateDetails?.superpower && (
