@@ -27,6 +27,8 @@ interface CardData {
   isBlurred?: boolean;
   isVerified?: boolean;
   bio?: string;
+  description?: string;
+  experience?: string;
   experienceHistory?: any[];
 }
 
@@ -115,9 +117,10 @@ export default function SwipeScreen() {
               subtitle: employer?.full_name || 'Firma',
               image: employer?.avatar_url || `https://picsum.photos/seed/${job.id}/600/800`,
               price: job.salary_range || 'Do uzgodnienia',
+              description: job.description,
               tags: [
                 { icon: 'map-marker', text: job.location_name || 'Lokalizacja' },
-                { icon: 'flash', text: 'Od zaraz' },
+                { icon: 'briefcase-outline', text: 'Stacjonarnie' },
               ],
               isVerified: employer?.employers?.[0]?.is_verified || false,
             };
@@ -292,54 +295,73 @@ export default function SwipeScreen() {
       <ImageBackground
         source={{ uri: item.image }}
         style={styles.cardImage}
-        blurRadius={item.isBlurred ? 20 : 0}
+        blurRadius={item.isBlurred ? 25 : 0}
       >
         <LinearGradient
-          colors={['rgba(255,255,255,0.2)', 'transparent', 'rgba(255,255,255,0.95)']}
-          locations={[0, 0.5, 0.8]}
+          colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)', 'rgba(0,0,0,0.95)']}
+          locations={[0, 0.4, 0.7, 0.9]}
           style={styles.gradient}
         >
-          {item.matchScore && (
-            <View style={styles.matchBadge}>
-              <Text style={styles.matchText}>🔥 {item.matchScore}% Match</Text>
-            </View>
-          )}
+          {/* Top Badges */}
+          <View style={styles.topBadgesRow}>
+            {item.matchScore && (
+              <View style={styles.matchBadgeModern}>
+                <MaterialCommunityIcons name="flash" size={14} color={Colors.primary} />
+                <Text style={styles.matchTextModern}>{item.matchScore}% DOPASOWANIA</Text>
+              </View>
+            )}
+            {item.isVerified && (
+              <View style={styles.verifiedBadgeModern}>
+                <MaterialCommunityIcons name="check-decagram" size={14} color="#fff" />
+                <Text style={styles.verifiedTextModern}>ZWERYFIKOWANY</Text>
+              </View>
+            )}
+          </View>
           
           {item.isBlurred && (
-            <View style={styles.lockContainer}>
-              <MaterialCommunityIcons name="lock" size={40} color={Colors.text} />
+            <View style={styles.lockContainerModern}>
+              <View style={styles.lockIconCircle}>
+                <MaterialCommunityIcons name="shield-lock" size={40} color={Colors.primary} />
+              </View>
+              <Text style={styles.lockText}>Profil ukryty (Blind Hiring)</Text>
             </View>
           )}
 
-          <View style={styles.overlayContent}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              {item.isVerified && (
-                <MaterialCommunityIcons 
-                  name="check-decagram" 
-                  size={20} 
-                  color={Colors.primary} 
-                  style={{ marginLeft: 6 }} 
-                />
-              )}
+          <View style={styles.overlayContentModern}>
+            {/* Title & Subtitle */}
+            <View style={styles.headerRowModern}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitleModern}>{item.title}</Text>
+                <Text style={styles.cardSubtitleModern}>{item.subtitle}</Text>
+              </View>
+              <View style={styles.priceContainerModern}>
+                <Text style={styles.priceLabelModern}>STAWKA</Text>
+                <Text style={styles.priceValueModern}>{item.price}</Text>
+              </View>
             </View>
-            <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
-            
-            {item.bio && (
-              <Text style={styles.cardBio} numberOfLines={2}>{item.bio}</Text>
+
+            {/* Description/Bio Snippet */}
+            {(item.description || item.bio) && (
+              <View style={styles.descriptionBoxModern}>
+                <Text style={styles.cardDescriptionModern} numberOfLines={2}>
+                  {item.description || item.bio}
+                </Text>
+              </View>
             )}
 
-            <View style={styles.priceBadge}>
-              <Text style={styles.priceText}>{item.price}</Text>
-            </View>
-
-            <View style={styles.tagRow}>
-              {item.tags.map((tag, i) => (
-                <View key={i} style={styles.tag}>
-                  <MaterialCommunityIcons name={tag.icon as any} size={16} color={Colors.textLight} />
-                  <Text style={styles.tagText}>{tag.text}</Text>
+            {/* Tags / Skills */}
+            <View style={styles.tagRowModern}>
+              {item.tags.slice(0, 3).map((tag, i) => (
+                <View key={i} style={styles.tagModern}>
+                  <MaterialCommunityIcons name={tag.icon as any} size={14} color={Colors.primary} />
+                  <Text style={styles.tagTextModern}>{tag.text}</Text>
                 </View>
               ))}
+              {item.tags.length > 3 && (
+                <View style={styles.tagMoreModern}>
+                  <Text style={styles.tagMoreTextModern}>+{item.tags.length - 3}</Text>
+                </View>
+              )}
             </View>
           </View>
         </LinearGradient>
@@ -499,79 +521,164 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
-    padding: 24,
+    padding: 20,
     justifyContent: 'space-between',
   },
-  matchBadge: {
-    alignSelf: 'flex-start',
+  topBadgesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  matchBadgeModern: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.primary,
+    gap: 4,
   },
-  matchText: {
+  matchTextModern: {
     color: Colors.primary,
     fontFamily: 'Montserrat_700Bold',
+    fontSize: 10,
+    letterSpacing: 1,
   },
-  lockContainer: {
-    position: 'absolute',
-    top: '40%',
-    left: '45%',
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    padding: 10,
-    borderRadius: 30,
-  },
-  overlayContent: {
-    gap: 8,
-  },
-  cardTitle: {
-    fontSize: 32,
-    fontFamily: 'Montserrat_900Black',
-    color: Colors.text,
-  },
-  cardSubtitle: {
-    fontFamily: 'Montserrat_400Regular',
-    fontSize: 16,
-    color: Colors.textLight,
-    marginBottom: 8,
-  },
-  cardBio: {
-    fontFamily: 'Montserrat_400Regular',
-    fontSize: 13,
-    color: Colors.text,
-    fontStyle: 'italic',
-    marginBottom: 12,
-    lineHeight: 18,
-  },
-  priceBadge: {
-    backgroundColor: Colors.primary,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  verifiedBadgeModern: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,122,255,0.8)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 12,
-    marginBottom: 8,
+    gap: 4,
   },
-  priceText: {
+  verifiedTextModern: {
+    color: '#fff',
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 10,
+    letterSpacing: 1,
+  },
+  lockContainerModern: {
+    position: 'absolute',
+    top: '30%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    gap: 15,
+  },
+  lockIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  lockText: {
     color: '#fff',
     fontFamily: 'Montserrat_700Bold',
     fontSize: 16,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
-  tagRow: {
+  overlayContentModern: {
+    gap: 15,
+  },
+  headerRowModern: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  cardTitleModern: {
+    fontSize: 28,
+    fontFamily: 'Montserrat_900Black',
+    color: '#fff',
+    lineHeight: 32,
+  },
+  cardSubtitleModern: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+  },
+  priceContainerModern: {
+    alignItems: 'flex-end',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  priceLabelModern: {
+    fontSize: 9,
+    fontFamily: 'Montserrat_700Bold',
+    color: Colors.primary,
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  priceValueModern: {
+    color: '#fff',
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 15,
+  },
+  descriptionBoxModern: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    padding: 12,
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary,
+  },
+  cardDescriptionModern: {
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+  tagRowModern: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
-  tag: {
+  tagModern: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
     gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  tagText: {
-    color: Colors.text,
-    fontFamily: 'Montserrat_400Regular',
-    fontSize: 14,
+  tagTextModern: {
+    color: '#fff',
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 12,
+  },
+  tagMoreModern: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    justifyContent: 'center',
+  },
+  tagMoreTextModern: {
+    color: Colors.primary,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 12,
+  },
+  actionBtn: {
+    elevation: 4,
+    margin: 0,
   },
   footer: {
     flexDirection: 'row',
@@ -579,10 +686,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 20,
     paddingBottom: 40,
-  },
-  actionBtn: {
-    elevation: 4,
-    margin: 0,
   },
   emptyState: {
     alignItems: 'center',
