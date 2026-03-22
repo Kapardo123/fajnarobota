@@ -1,5 +1,5 @@
 import { View, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, Platform } from 'react-native';
-import { Avatar, Text, Button, List, Divider, ProgressBar, Chip, IconButton, TextInput, Card, ActivityIndicator } from 'react-native-paper';
+import { Avatar, Text, Button, List, Divider, ProgressBar, Chip, IconButton, TextInput, Card, ActivityIndicator, Switch } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { Config } from '../../constants/Config';
@@ -84,6 +84,8 @@ export default function ProfileScreen() {
   const [tempExp, setTempExp] = useState({ company: '', position: '', period: '' });
   const [uploading, setUploading] = useState(false);
   const [isEditingAvailability, setIsEditingAvailability] = useState(false);
+  const [isEditingSkills, setIsEditingSkills] = useState(false);
+  const [newSkills, setNewSkills] = useState('');
 
   // Image editing state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -521,6 +523,47 @@ export default function ProfileScreen() {
     }
   };
 
+  const toggleBlindHiring = async (value: boolean) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('candidates')
+        .update({ blind_hiring: value })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      setCandidateDetails(prev => prev ? { ...prev, blind_hiring: value } : null);
+      logger.action('Zmieniono tryb Blind Hiring', { enabled: value });
+    } catch (error: any) {
+      logger.error('Toggle blind hiring error', error);
+      Alert.alert('Błąd', 'Nie udało się zmienić ustawienia Blind Hiring.');
+    }
+  };
+
+  const updateSkills = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const skillsList = newSkills.split(',').map(s => s.trim()).filter(s => s !== '');
+
+      const { error } = await supabase
+        .from('candidates')
+        .update({ skills: skillsList })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      setCandidateDetails(prev => prev ? { ...prev, skills: skillsList } : null);
+      setIsEditingSkills(false);
+      Alert.alert('Sukces', 'Umiejętności zostały zaktualizowane.');
+    } catch (error: any) {
+      logger.error('Update skills error', error);
+      Alert.alert('Błąd', 'Nie udało się zaktualizować umiejętności.');
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
@@ -619,10 +662,12 @@ export default function ProfileScreen() {
             title="Tryb Blind Hiring"
             description={candidateDetails?.blind_hiring ? "Włączony (Rozmyte zdjęcie)" : "Wyłączony"}
             left={props => <List.Icon {...props} icon={candidateDetails?.blind_hiring ? "eye-off" : "eye"} color={Colors.primary} />}
-            right={props => (
-              <Text {...props} style={{ color: candidateDetails?.blind_hiring ? Colors.secondary : Colors.textLight, alignSelf: 'center', fontFamily: 'Montserrat_700Bold' }}>
-                {candidateDetails?.blind_hiring ? 'Włączony' : 'Wyłączony'}
-              </Text>
+            right={() => (
+              <Switch 
+                value={candidateDetails?.blind_hiring || false} 
+                onValueChange={toggleBlindHiring} 
+                color={Colors.primary}
+              />
             )}
           />
           <List.Item
@@ -634,8 +679,13 @@ export default function ProfileScreen() {
           />
           <List.Item
             title="Moje Umiejętności"
-            description={candidateDetails?.skills?.join(', ')}
+            description={candidateDetails?.skills?.join(', ') || 'Brak umiejętności'}
             left={props => <List.Icon {...props} icon="star-outline" color={Colors.primary} />}
+            right={props => <List.Icon {...props} icon="pencil-outline" color={Colors.textLight} />}
+            onPress={() => {
+              setNewSkills(candidateDetails?.skills?.join(', ') || '');
+              setIsEditingSkills(true);
+            }}
           />
           <List.Item
             title="Oczekiwania finansowe"
@@ -1114,6 +1164,47 @@ export default function ProfileScreen() {
               onLocationSelect={updateLocation}
               placeholder="Wyszukaj miasto..."
             />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Modal edycji umiejętności */}
+      <Modal 
+        visible={isEditingSkills} 
+        onRequestClose={() => setIsEditingSkills(false)} 
+        transparent={true} 
+        animationType="slide"
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setIsEditingSkills(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text variant="headlineSmall" style={styles.modalTitle}>Moje umiejętności</Text>
+              <IconButton icon="close" onPress={() => setIsEditingSkills(false)} />
+            </View>
+            <TextInput
+              label="Wpisz umiejętności po przecinku"
+              value={newSkills}
+              onChangeText={setNewSkills}
+              mode="outlined"
+              multiline
+              numberOfLines={4}
+              style={styles.modalInput}
+              outlineColor={Colors.border}
+              activeOutlineColor={Colors.primary}
+              placeholder="np. Prawo jazdy, Obsługa klienta, Angielski B2"
+            />
+            <Button 
+              mode="contained" 
+              onPress={updateSkills}
+              style={styles.modalSubmitBtn}
+              buttonColor={Colors.primary}
+            >
+              Zapisz umiejętności
+            </Button>
           </View>
         </TouchableOpacity>
       </Modal>
