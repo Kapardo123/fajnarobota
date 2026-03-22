@@ -330,12 +330,13 @@ export default function ChatScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <View style={styles.inputContainer}>
-          <IconButton
-            icon="paperclip"
-            iconColor={Colors.primary}
+          <TouchableOpacity 
+            style={[styles.cvButton, (loading || uploading) && { opacity: 0.5 }]} 
             onPress={pickDocument}
             disabled={loading || uploading}
-          />
+          >
+            <Text style={styles.cvButtonText}>CV</Text>
+          </TouchableOpacity>
           <TextInput
             placeholder="Napisz wiadomość..."
             value={inputText}
@@ -469,11 +470,29 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
+    gap: 8,
+  },
+  cvButton: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 40,
+  },
+  cvButtonText: {
+    color: Colors.primary,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 14,
+    letterSpacing: 0.5,
   },
   input: {
     flex: 1,
@@ -481,7 +500,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     borderRadius: 20,
     paddingHorizontal: 16,
-    marginRight: 4,
     fontFamily: 'Montserrat_400Regular',
     fontSize: 14,
   },
