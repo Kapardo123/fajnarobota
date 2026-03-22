@@ -295,11 +295,11 @@ export default function SwipeScreen() {
       <ImageBackground
         source={{ uri: item.image }}
         style={styles.cardImage}
-        blurRadius={item.isBlurred ? 25 : 0}
+        blurRadius={item.isBlurred ? 30 : 0}
       >
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)', 'rgba(0,0,0,0.95)']}
-          locations={[0, 0.3, 0.6, 0.9]}
+          colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)', 'rgba(0,0,0,0.95)']}
+          locations={[0, 0.2, 0.5, 0.7, 0.9]}
           style={styles.gradient}
         >
           {/* Top Badges */}
@@ -316,24 +316,36 @@ export default function SwipeScreen() {
             </View>
           </View>
           
-          {item.isBlurred && (
-            <View style={styles.lockContainerModern}>
-              <View style={styles.lockIconCircle}>
-                <MaterialCommunityIcons name="shield-lock" size={40} color={Colors.primary} />
+          {/* Middle Section - Now it fills the space */}
+          <View style={styles.middleContainerModern}>
+            {item.isBlurred ? (
+              <View style={styles.lockContainerModern}>
+                <View style={styles.lockIconCircle}>
+                  <MaterialCommunityIcons name="shield-lock" size={40} color={Colors.primary} />
+                </View>
+                <Text style={styles.lockText}>Profil ukryty (Blind Hiring)</Text>
+                <Text style={styles.lockSubtext}>Zdjęcie zobaczysz po dopasowaniu</Text>
               </View>
-              <Text style={styles.lockText}>Profil ukryty (Blind Hiring)</Text>
-            </View>
-          )}
+            ) : (
+              <View style={styles.middleContentModern}>
+                {/* Możemy tu dodać dodatkowe info, np. o typie pracy */}
+                <View style={styles.quickInfoBadge}>
+                  <MaterialCommunityIcons name="briefcase-outline" size={14} color="#fff" />
+                  <Text style={styles.quickInfoText}>PRACA STACJONARNA</Text>
+                </View>
+              </View>
+            )}
+          </View>
 
           <View style={styles.overlayContentModern}>
-            {/* Title & Subtitle */}
+            {/* Title & Subtitle Row */}
             <View style={styles.headerRowModern}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitleModern}>{item.title}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Text style={styles.cardSubtitleModern}>{item.subtitle}</Text>
                   {item.isVerified && (
-                    <MaterialCommunityIcons name="check-decagram" size={16} color={Colors.primary} />
+                    <MaterialCommunityIcons name="check-decagram" size={18} color={Colors.primary} />
                   )}
                 </View>
               </View>
@@ -344,7 +356,7 @@ export default function SwipeScreen() {
             </View>
 
             {/* Middle Section: Bio/Experience */}
-            <View style={styles.middleSectionModern}>
+            <View style={styles.infoSectionModern}>
               {(item.description || item.bio) && (
                 <View style={styles.descriptionBoxModern}>
                   <Text style={styles.cardDescriptionModern} numberOfLines={3}>
@@ -613,8 +625,56 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
+  lockIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  lockContainerModern: {
+    alignItems: 'center',
+    gap: 15,
+  },
+  lockSubtext: {
+    color: 'rgba(255,255,255,0.7)',
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  middleContainerModern: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  middleContentModern: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickInfoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  quickInfoText: {
+    color: '#fff',
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 10,
+    letterSpacing: 1,
+  },
   overlayContentModern: {
     gap: 15,
+    paddingBottom: 10,
   },
   headerRowModern: {
     flexDirection: 'row',
@@ -655,7 +715,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_800ExtraBold',
     fontSize: 15,
   },
-  middleSectionModern: {
+  infoSectionModern: {
     gap: 12,
   },
   descriptionBoxModern: {
