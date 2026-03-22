@@ -1,16 +1,23 @@
-import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
-import { Text, TextInput, IconButton, Avatar, Appbar } from 'react-native-paper';
+import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { Text, TextInput, IconButton, Avatar, Appbar, Card } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../src/lib/supabase';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as WebBrowser from 'expo-web-browser';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 interface Message {
   id: string;
   match_id: string;
   sender_id: string;
   content: string;
+  type: 'text' | 'file';
+  file_url?: string;
   created_at: string;
   is_me: boolean;
 }
@@ -21,6 +28,7 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
@@ -37,10 +45,14 @@ export default function ChatScreen() {
         filter: `match_id=eq.${id}`
       }, (payload) => {
         const newMessage = payload.new as any;
-        setMessages(prev => [...prev, {
-          ...newMessage,
-          is_me: newMessage.sender_id === userId
-        }]);
+        setMessages(prev => {
+          // Unikaj duplikowania wiadomości wysłanych przez siebie (które już są w stanie)
+          if (prev.some(m => m.id === newMessage.id)) return prev;
+          return [...prev, {
+            ...newMessage,
+            is_me: newMessage.sender_id === userId
+          }];
+        });
       })
       .subscribe();
 
@@ -86,7 +98,8 @@ export default function ChatScreen() {
           .insert({
             match_id: id,
             sender_id: userId,
-            content: text
+            content: text,
+            type: 'text'
           });
 
         if (error) throw error;
@@ -97,6 +110,82 @@ export default function ChatScreen() {
     }
   };
 
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return;
+
+      const file = result.assets[0];
+      if (file.size && file.size > 5 * 1024 * 1024) {
+        Alert.alert('Błąd', 'Plik jest za duży. Maksymalny rozmiar to 5MB.');
+        return;
+      }
+
+      uploadFile(file);
+    } catch (err) {
+      console.error('Error picking document:', err);
+    }
+  };
+
+  const uploadFile = async (file: any) => {
+    if (!userId) return;
+
+    try {
+      setUploading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}_${Date.now()}.${fileExt}`;
+      const filePath = `cv/${fileName}`;
+
+      const response = await fetch(file.uri);
+      const blob = await response.blob();
+
+      const { error: uploadError } = await supabase.storage
+        .from('cv_files')
+        .upload(filePath, blob);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('cv_files')
+        .getPublicUrl(filePath);
+
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert({
+          match_id: id,
+          sender_id: userId,
+          content: file.name,
+          type: 'file',
+          file_url: publicUrl
+        });
+
+      if (messageError) throw messageError;
+
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      Alert.alert('Błąd', 'Nie udało się wysłać pliku.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFilePreview = async (url: string, fileName: string) => {
+    try {
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        await WebBrowser.openBrowserAsync(url);
+      }
+    } catch (error) {
+      console.error('Error previewing file:', error);
+      Alert.alert('Błąd', 'Nie można otworzyć pliku.');
+    }
+  };
+
   const renderMessage = ({ item }: { item: Message }) => (
     <View style={[
       styles.messageWrapper,
@@ -104,14 +193,34 @@ export default function ChatScreen() {
     ]}>
       <View style={[
         styles.messageBubble,
-        item.is_me ? styles.myMessageBubble : styles.otherMessageBubble
+        item.is_me ? styles.myMessageBubble : styles.otherMessageBubble,
+        item.type === 'file' && styles.fileBubble
       ]}>
-        <Text style={[
-          styles.messageText,
-          item.is_me ? styles.myMessageText : styles.otherMessageText
-        ]}>
-          {item.content}
-        </Text>
+        {item.type === 'file' ? (
+          <TouchableOpacity 
+            style={styles.fileContainer} 
+            onPress={() => item.file_url && handleFilePreview(item.file_url, item.content)}
+          >
+            <View style={styles.fileIconBox}>
+              <MaterialCommunityIcons name="file-pdf-box" size={32} color={item.is_me ? '#fff' : Colors.primary} />
+            </View>
+            <View style={styles.fileInfo}>
+              <Text style={[styles.fileName, item.is_me && { color: '#fff' }]} numberOfLines={1}>
+                {item.content}
+              </Text>
+              <Text style={[styles.fileAction, item.is_me && { color: 'rgba(255,255,255,0.7)' }]}>
+                Kliknij, aby otworzyć PDF
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <Text style={[
+            styles.messageText,
+            item.is_me ? styles.myMessageText : styles.otherMessageText
+          ]}>
+            {item.content}
+          </Text>
+        )}
         <Text style={item.is_me ? styles.myTimestamp : styles.timestamp}>
           {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </Text>
@@ -145,11 +254,24 @@ export default function ChatScreen() {
         />
       )}
 
+      {uploading && (
+        <View style={styles.uploadingOverlay}>
+          <ActivityIndicator color={Colors.primary} size="small" />
+          <Text style={styles.uploadingText}>Wysyłanie pliku...</Text>
+        </View>
+      )}
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <View style={styles.inputContainer}>
+          <IconButton
+            icon="paperclip"
+            iconColor={Colors.primary}
+            onPress={pickDocument}
+            disabled={loading || uploading}
+          />
           <TextInput
             placeholder="Napisz wiadomość..."
             value={inputText}
@@ -166,7 +288,7 @@ export default function ChatScreen() {
             containerColor={Colors.primary}
             iconColor="#fff"
             onPress={sendMessage}
-            disabled={!inputText.trim() || loading}
+            disabled={(!inputText.trim() && !uploading) || loading}
           />
         </View>
       </KeyboardAvoidingView>
@@ -224,6 +346,37 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     borderBottomLeftRadius: 4,
   },
+  fileBubble: {
+    padding: 8,
+    minWidth: '60%',
+  },
+  fileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  fileIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fileInfo: {
+    flex: 1,
+  },
+  fileName: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 14,
+    color: Colors.text,
+  },
+  fileAction: {
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 11,
+    color: Colors.textLight,
+    marginTop: 2,
+  },
   messageText: {
     fontFamily: 'Montserrat_400Regular',
     fontSize: 15,
@@ -252,7 +405,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     paddingVertical: 8,
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
@@ -260,12 +413,25 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 45,
+    height: 40,
     backgroundColor: Colors.background,
-    borderRadius: 22,
+    borderRadius: 20,
     paddingHorizontal: 16,
-    marginRight: 8,
+    marginRight: 4,
     fontFamily: 'Montserrat_400Regular',
-    fontSize: 15,
+    fontSize: 14,
+  },
+  uploadingOverlay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    gap: 10,
+  },
+  uploadingText: {
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 12,
+    color: Colors.primary,
   },
 });
