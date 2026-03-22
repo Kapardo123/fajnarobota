@@ -1,5 +1,5 @@
-import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, TouchableOpacity, Alert, Modal, ScrollView } from 'react-native';
-import { Text, TextInput, IconButton, Avatar, Appbar, Card } from 'react-native-paper';
+import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, TouchableOpacity, Alert, Modal, ScrollView, TextInput as RNTextInput } from 'react-native';
+import { Text, IconButton, Avatar, Appbar } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -95,21 +95,26 @@ export default function ChatScreen() {
 
         if (!isMounted) return;
 
-        const formattedMsgs = msgsRes.data.map(m => ({
+        const rawMsgs = msgsRes.data || [];
+        const formattedMsgs = rawMsgs.map(m => ({
           ...m,
           is_me: m.sender_id === session.user.id
         }));
         setMessages(formattedMsgs);
 
         if (matchRes.data?.job) {
-          const job = matchRes.data.job as any;
-          setJobInfo({
-            title: job.title,
-            salary_range: job.salary_range,
-            location_name: job.location_name,
-            description: job.description,
-            skills: job.required_skills || []
-          });
+          // Supabase might return job as an object or an array depending on the query
+          const jobData = Array.isArray(matchRes.data.job) ? matchRes.data.job[0] : matchRes.data.job;
+          
+          if (jobData) {
+            setJobInfo({
+              title: jobData.title || 'Oferta',
+              salary_range: jobData.salary_range || 'Do uzgodnienia',
+              location_name: jobData.location_name || 'Lokalizacja',
+              description: jobData.description || 'Brak opisu',
+              skills: Array.isArray(jobData.required_skills) ? jobData.required_skills : []
+            });
+          }
         }
 
         // Oznacz jako przeczytane
@@ -332,6 +337,16 @@ export default function ChatScreen() {
     }
   };
 
+  const formatTime = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return '';
+    }
+  };
+
   const renderMessage = ({ item }: { item: Message }) => (
     <View style={[
       styles.messageWrapper,
@@ -368,24 +383,43 @@ export default function ChatScreen() {
           </Text>
         )}
         <Text style={item.is_me ? styles.myTimestamp : styles.timestamp}>
-          {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {formatTime(item.created_at)}
         </Text>
       </View>
     </View>
   );
+
+  if (!id) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Appbar.Header style={styles.header}>
+          <Appbar.BackAction onPress={() => router.back()} color={Colors.primary} />
+          <Appbar.Content title="Błąd" />
+        </Appbar.Header>
+        <View style={styles.centered}>
+          <Text>Nie znaleziono identyfikatora rozmowy.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <Appbar.Header style={styles.header} elevated>
         <Appbar.BackAction onPress={() => router.back()} color={Colors.primary} />
         <Avatar.Icon size={36} icon="account" style={styles.avatar} backgroundColor={Colors.background} color={Colors.primary} />
-        <Appbar.Content 
-          title={Array.isArray(name) ? name[0] : (name || 'Rozmowa')} 
-          titleStyle={styles.headerTitle} 
-          subtitle={jobInfo ? `Dotyczy: ${jobInfo.title}` : ''}
-          subtitleStyle={styles.headerSubtitle}
-          onPress={() => jobInfo && setJobInfoVisible(true)}
-        />
+        <View style={{ flex: 1, marginLeft: 8 }}>
+          <Text variant="titleMedium" style={styles.headerTitle} numberOfLines={1}>
+            {Array.isArray(name) ? name[0] : (name || 'Rozmowa')}
+          </Text>
+          {jobInfo?.title && (
+            <TouchableOpacity onPress={() => setJobInfoVisible(true)}>
+              <Text variant="labelSmall" style={styles.headerSubtitle} numberOfLines={1}>
+                Dotyczy: {jobInfo.title}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
         {jobInfo && (
           <Appbar.Action 
             icon="information-outline" 
@@ -406,7 +440,6 @@ export default function ChatScreen() {
           renderItem={renderMessage}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.messageList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
         />
       )}
 
@@ -429,14 +462,11 @@ export default function ChatScreen() {
           >
             <Text style={styles.cvButtonText}>CV</Text>
           </TouchableOpacity>
-          <TextInput
+          <RNTextInput
             placeholder="Napisz wiadomość..."
             value={inputText}
             onChangeText={setInputText}
-            mode="flat"
             style={styles.input}
-            underlineColor="transparent"
-            activeUnderlineColor="transparent"
             placeholderTextColor={Colors.textLight}
           />
           <IconButton
@@ -485,9 +515,9 @@ export default function ChatScreen() {
               <Text style={styles.sectionLabel}>Wymagane umiejętności</Text>
               <View style={styles.skillsContainer}>
                 {jobInfo?.skills.map((skill, index) => (
-                  <Card key={index} style={styles.skillChip}>
+                  <View key={index} style={styles.skillChip}>
                     <Text style={styles.skillText}>{skill}</Text>
-                  </Card>
+                  </View>
                 ))}
               </View>
             </ScrollView>
@@ -653,6 +683,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontFamily: 'Montserrat_400Regular',
     fontSize: 14,
+    color: Colors.text, // Dodano kolor tekstu
   },
   uploadingOverlay: {
     flexDirection: 'row',
