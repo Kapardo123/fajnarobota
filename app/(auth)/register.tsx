@@ -30,6 +30,8 @@ export default function RegisterScreen() {
     salary: '',
     superpower: '',
     experience: 'Junior',
+    bio: '',
+    experienceHistory: [] as { company: string; position: string; period: string }[],
     profileMode: 'real' as 'real' | 'avatar' | 'work',
     blindHiring: true, // Domyślnie włączone
     photoUrl: Config.DEFAULT_CANDIDATE_PHOTO,
@@ -37,6 +39,8 @@ export default function RegisterScreen() {
     lat: 0,
     lng: 0,
   });
+
+  const [newExp, setNewExp] = useState({ company: '', position: '', period: '' });
 
   // Employer data
   const [employerData, setEmployerData] = useState({
@@ -135,6 +139,8 @@ export default function RegisterScreen() {
             superpower: candidateData.superpower,
             experience: candidateData.experience,
             blind_hiring: candidateData.blindHiring,
+            bio: candidateData.bio,
+            experience_history: candidateData.experienceHistory,
           });
         if (candidateError) throw candidateError;
       } else {
@@ -224,7 +230,7 @@ export default function RegisterScreen() {
 
   const handleNext = () => {
     if (!validateStep()) return;
-    const maxSteps = role === 'candidate' ? 5 : 4;
+    const maxSteps = role === 'candidate' ? 6 : 4;
     if (step < maxSteps) {
       setStep(step + 1);
     } else {
@@ -581,6 +587,21 @@ export default function RegisterScreen() {
               </View>
               {errors.superpower && <Text style={styles.errorText}>{errors.superpower}</Text>}
             </View>
+
+            <View style={{ marginTop: 24 }}>
+              <TextInput
+                label="Napisz coś o sobie (Bio)"
+                value={candidateData.bio}
+                onChangeText={(text) => setCandidateData({...candidateData, bio: text})}
+                mode="outlined"
+                multiline
+                numberOfLines={4}
+                placeholder="np. Jestem studentem szukającym pracy dorywczej w weekendy..."
+                style={styles.input}
+                outlineColor={Colors.border}
+                activeOutlineColor={Colors.primary}
+              />
+            </View>
           </View>
         ) : (
           <View style={styles.stepContent}>
@@ -604,6 +625,75 @@ export default function RegisterScreen() {
         );
 
       case 5:
+        return role === 'candidate' ? (
+          <View style={styles.stepContent}>
+            <Text style={styles.stepTitle}>Doświadczenie</Text>
+            <Text style={styles.stepSubtitle}>Dodaj poprzednie miejsca pracy, aby zwiększyć szansę na Match.</Text>
+
+            <View style={styles.form}>
+              <TextInput
+                label="Firma"
+                value={newExp.company}
+                onChangeText={(text) => setNewExp({...newExp, company: text})}
+                mode="outlined"
+                style={styles.input}
+              />
+              <TextInput
+                label="Stanowisko"
+                value={newExp.position}
+                onChangeText={(text) => setNewExp({...newExp, position: text})}
+                mode="outlined"
+                style={styles.input}
+              />
+              <TextInput
+                label="Okres (np. 2022-2023)"
+                value={newExp.period}
+                onChangeText={(text) => setNewExp({...newExp, period: text})}
+                mode="outlined"
+                style={styles.input}
+              />
+              <Button 
+                mode="outlined" 
+                onPress={() => {
+                  if (newExp.company && newExp.position) {
+                    setCandidateData({
+                      ...candidateData,
+                      experienceHistory: [...candidateData.experienceHistory, newExp]
+                    });
+                    setNewExp({ company: '', position: '', period: '' });
+                  }
+                }}
+                icon="plus"
+              >
+                Dodaj do listy
+              </Button>
+            </View>
+
+            <View style={{ marginTop: 24 }}>
+              {candidateData.experienceHistory.map((exp, index) => (
+                <Card key={index} style={{ marginBottom: 10 }}>
+                  <Card.Title 
+                    title={exp.position} 
+                    subtitle={`${exp.company} | ${exp.period}`}
+                    right={(props) => (
+                      <IconButton 
+                        {...props} 
+                        icon="delete-outline" 
+                        onPress={() => {
+                          const newList = [...candidateData.experienceHistory];
+                          newList.splice(index, 1);
+                          setCandidateData({...candidateData, experienceHistory: newList});
+                        }} 
+                      />
+                    )}
+                  />
+                </Card>
+              ))}
+            </View>
+          </View>
+        ) : null;
+      
+      case 6:
         return role === 'candidate' ? (
           <View style={styles.stepContent}>
             <Text style={styles.stepTitle}>Twoje zdjęcie</Text>
@@ -651,7 +741,7 @@ export default function RegisterScreen() {
           <MaterialCommunityIcons name="arrow-left" size={28} color={Colors.text} />
         </TouchableOpacity>
         <View style={styles.progressContainer}>
-          <View style={[styles.progressBar, { width: `${(step / (role === 'candidate' ? 5 : 4)) * 100}%` }]} />
+          <View style={[styles.progressBar, { width: `${(step / (role === 'candidate' ? 6 : 4)) * 100}%` }]} />
         </View>
         <View style={{ width: 28 }} />
       </View>
@@ -670,7 +760,7 @@ export default function RegisterScreen() {
           contentStyle={styles.nextButtonContent}
           buttonColor={Colors.primary}
         >
-          {step === (role === 'candidate' ? 5 : 4) ? 'Zakończ' : 'Dalej'}
+          {step === (role === 'candidate' ? 6 : 4) ? 'Zakończ' : 'Dalej'}
         </Button>
       </View>
     </SafeAreaView>

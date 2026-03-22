@@ -34,6 +34,8 @@ interface CandidateDetails {
   skills: string[];
   superpower: string;
   blind_hiring: boolean;
+  bio?: string;
+  experience_history?: { company: string; position: string; period: string }[];
 }
 
 interface EmployerDetails {
@@ -69,11 +71,21 @@ export default function ProfileScreen() {
   }>({});
   const [isEditingSalary, setIsEditingSalary] = useState(false);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [isEditingExp, setIsEditingExp] = useState(false);
+  const [newBio, setNewBio] = useState('');
+  const [tempExp, setTempExp] = useState({ company: '', position: '', period: '' });
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    if (candidateDetails?.bio) {
+      setNewBio(candidateDetails.bio);
+    }
+  }, [candidateDetails]);
 
   const validateJob = () => {
     const errors: {title?: string, salary?: string, location?: string, description?: string} = {};
@@ -324,6 +336,45 @@ export default function ProfileScreen() {
     }
   };
 
+  const updateBio = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('candidates')
+        .update({ bio: newBio })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      setCandidateDetails(prev => prev ? { ...prev, bio: newBio } : null);
+      setIsEditingBio(false);
+      Alert.alert('Sukces', 'Twój opis został zaktualizowany.');
+    } catch (error: any) {
+      logger.error('Update bio error', error);
+      Alert.alert('Błąd', 'Nie udało się zaktualizować opisu.');
+    }
+  };
+
+  const updateExperience = async (newList: any[]) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('candidates')
+        .update({ experience_history: newList })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      setCandidateDetails(prev => prev ? { ...prev, experience_history: newList } : null);
+      Alert.alert('Sukces', 'Historia pracy została zaktualizowana.');
+    } catch (error: any) {
+      logger.error('Update experience error', error);
+      Alert.alert('Błąd', 'Nie udało się zaktualizować doświadczenia.');
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
@@ -434,6 +485,64 @@ export default function ProfileScreen() {
             <Text variant="labelSmall" style={styles.statLabel}>Dopasowania</Text>
           </View>
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <List.Section>
+          <List.Subheader style={styles.listSubheader}>O mnie (Bio)</List.Subheader>
+          <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+            <Text style={styles.bioText}>
+              {candidateDetails?.bio || 'Nie dodano jeszcze opisu. Kliknij edytuj, aby opowiedzieć o sobie.'}
+            </Text>
+            <Button 
+              mode="text" 
+              onPress={() => setIsEditingBio(true)}
+              style={{ alignSelf: 'flex-end' }}
+              textColor={Colors.primary}
+              icon="pencil"
+            >
+              Edytuj opis
+            </Button>
+          </View>
+        </List.Section>
+      </View>
+
+      <View style={styles.section}>
+        <List.Section>
+          <List.Subheader style={styles.listSubheader}>Doświadczenie zawodowe</List.Subheader>
+          {candidateDetails?.experience_history && candidateDetails.experience_history.length > 0 ? (
+            candidateDetails.experience_history.map((exp, index) => (
+              <List.Item
+                key={index}
+                title={exp.position}
+                description={`${exp.company} | ${exp.period}`}
+                left={props => <List.Icon {...props} icon="briefcase-outline" color={Colors.primary} />}
+                right={props => (
+                  <IconButton 
+                    {...props} 
+                    icon="delete-outline" 
+                    onPress={() => {
+                      const newList = [...candidateDetails.experience_history!];
+                      newList.splice(index, 1);
+                      updateExperience(newList);
+                    }} 
+                  />
+                )}
+              />
+            ))
+          ) : (
+            <Text style={styles.noJobsText}>Brak historii zatrudnienia.</Text>
+          )}
+          <Button 
+            mode="contained" 
+            onPress={() => setIsEditingExp(true)}
+            style={{ margin: 16, borderRadius: 12 }}
+            buttonColor={Colors.primary}
+            icon="plus"
+          >
+            Dodaj doświadczenie
+          </Button>
+        </List.Section>
       </View>
 
       <View style={styles.section}>
@@ -747,6 +856,85 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
+      {/* Modal edycji Bio */}
+      <Modal visible={isEditingBio} onDismiss={() => setIsEditingBio(false)} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text variant="headlineSmall" style={styles.modalTitle}>O mnie</Text>
+              <IconButton icon="close" onPress={() => setIsEditingBio(false)} />
+            </View>
+            <TextInput
+              label="Opis profilu"
+              value={newBio}
+              onChangeText={setNewBio}
+              mode="outlined"
+              multiline
+              numberOfLines={6}
+              style={styles.modalInput}
+              outlineColor={Colors.border}
+              activeOutlineColor={Colors.primary}
+            />
+            <Button 
+              mode="contained" 
+              onPress={updateBio}
+              style={styles.modalSubmitBtn}
+              buttonColor={Colors.primary}
+            >
+              Zapisz opis
+            </Button>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal dodawania doświadczenia */}
+      <Modal visible={isEditingExp} onDismiss={() => setIsEditingExp(false)} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text variant="headlineSmall" style={styles.modalTitle}>Dodaj doświadczenie</Text>
+              <IconButton icon="close" onPress={() => setIsEditingExp(false)} />
+            </View>
+            <TextInput
+              label="Firma"
+              value={tempExp.company}
+              onChangeText={(text) => setTempExp({...tempExp, company: text})}
+              mode="outlined"
+              style={styles.modalInput}
+            />
+            <TextInput
+              label="Stanowisko"
+              value={tempExp.position}
+              onChangeText={(text) => setTempExp({...tempExp, position: text})}
+              mode="outlined"
+              style={styles.modalInput}
+            />
+            <TextInput
+              label="Okres"
+              value={tempExp.period}
+              onChangeText={(text) => setTempExp({...tempExp, period: text})}
+              mode="outlined"
+              style={styles.modalInput}
+            />
+            <Button 
+              mode="contained" 
+              onPress={() => {
+                if (tempExp.company && tempExp.position) {
+                  const newList = [...(candidateDetails?.experience_history || []), tempExp];
+                  updateExperience(newList);
+                  setTempExp({ company: '', position: '', period: '' });
+                  setIsEditingExp(false);
+                }
+              }}
+              style={styles.modalSubmitBtn}
+              buttonColor={Colors.primary}
+            >
+              Dodaj do profilu
+            </Button>
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal edycji lokalizacji */}
       <Modal visible={isEditingLocation} onDismiss={() => setIsEditingLocation(false)} transparent={true} animationType="slide">
         <View style={styles.modalOverlay}>
@@ -968,6 +1156,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_700Bold',
     color: Colors.primary,
     paddingTop: 16,
+  },
+  bioText: {
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 14,
+    color: Colors.text,
+    lineHeight: 20,
   },
   modalOverlay: {
     flex: 1,

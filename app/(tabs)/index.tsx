@@ -26,6 +26,8 @@ interface CardData {
   matchScore?: number;
   isBlurred?: boolean;
   isVerified?: boolean;
+  bio?: string;
+  experienceHistory?: any[];
 }
 
 export default function SwipeScreen() {
@@ -148,6 +150,8 @@ export default function SwipeScreen() {
             tags: (cand.skills || []).map((skill: string) => ({ icon: 'star-outline', text: skill })),
             matchScore: 85 + Math.floor(Math.random() * 15),
             isBlurred: cand.blind_hiring,
+            bio: cand.bio,
+            experienceHistory: cand.experience_history,
           }));
           setCards(candidateCards);
         }
@@ -321,6 +325,10 @@ export default function SwipeScreen() {
             </View>
             <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
             
+            {item.bio && (
+              <Text style={styles.cardBio} numberOfLines={2}>{item.bio}</Text>
+            )}
+
             <View style={styles.priceBadge}>
               <Text style={styles.priceText}>{item.price}</Text>
             </View>
@@ -524,10 +532,18 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   cardSubtitle: {
-    fontSize: 18,
     fontFamily: 'Montserrat_400Regular',
+    fontSize: 16,
     color: Colors.textLight,
     marginBottom: 8,
+  },
+  cardBio: {
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 13,
+    color: Colors.text,
+    fontStyle: 'italic',
+    marginBottom: 12,
+    lineHeight: 18,
   },
   priceBadge: {
     backgroundColor: Colors.primary,
