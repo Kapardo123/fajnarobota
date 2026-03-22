@@ -76,8 +76,10 @@ export default function MatchModal({
             ]}
           >
             <View style={styles.topBar}>
-              <MaterialCommunityIcons name="briefcase-check" size={24} color={Colors.primary} />
-              <Text style={styles.topBarText}>NOWA WSPÓŁPRACA</Text>
+              <View style={styles.logoBadgeSmall}>
+                <MaterialCommunityIcons name="briefcase-variant" size={14} color={Colors.primary} />
+              </View>
+              <Text style={styles.logoTextSmall}>Fajna<Text style={{color: Colors.primary}}>Robota</Text></Text>
             </View>
 
             <View style={styles.content}>
@@ -188,6 +190,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.primary,
     letterSpacing: 1.5,
+  },
+  logoBadgeSmall: {
+    width: 24,
+    height: 24,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoTextSmall: {
+    fontSize: 14,
+    fontFamily: 'Montserrat_900Black',
+    color: '#000',
+    letterSpacing: -0.2,
   },
   content: {
     padding: 24,

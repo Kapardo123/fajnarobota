@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../src/lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 interface Match {
   id: string;
@@ -221,7 +222,10 @@ export default function InboxScreen() {
   const renderHeader = useCallback(() => (
     <>
       <View style={styles.header}>
-        <Text variant="headlineMedium" style={styles.headerTitle}>Twoje Pary</Text>
+        <View style={styles.logoBadgeSmall}>
+          <MaterialCommunityIcons name="briefcase-variant" size={16} color={Colors.primary} />
+        </View>
+        <Text style={styles.logoTextSmall}>Fajna<Text style={{color: Colors.primary}}>Robota</Text></Text>
       </View>
 
       <Searchbar
@@ -313,10 +317,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   headerTitle: {
     fontFamily: 'Montserrat_900Black',
     color: Colors.text,
+  },
+  logoBadgeSmall: {
+    width: 32,
+    height: 32,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoTextSmall: {
+    fontSize: 20,
+    fontFamily: 'Montserrat_900Black',
+    color: '#000',
+    letterSpacing: -0.4,
   },
   searchBar: {
     marginHorizontal: 20,
