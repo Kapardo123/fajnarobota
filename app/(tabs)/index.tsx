@@ -523,11 +523,12 @@ const styles = StyleSheet.create({
   cardContainer: {
     flex: 1,
     padding: 16,
+    paddingTop: 40, // Dodatkowy padding u góry, aby obniżyć kartę
     justifyContent: 'center',
   },
   cardWrapper: {
     width: '100%',
-    height: SCREEN_HEIGHT * 0.8, // Wydłużenie karty w dół
+    height: SCREEN_HEIGHT * 0.75, // Nieco krótsza karta, aby lepiej się centrowała
   },
   card: {
     flex: 1,
@@ -590,7 +591,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   middleContainerModern: {
-    flex: 1.5, // Pcha treść na dół, dając więcej miejsca
+    flex: 2, // Jeszcze więcej miejsca na środek, aby wypchnąć dół niżej
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -621,7 +622,8 @@ const styles = StyleSheet.create({
   },
   lockContainerModern: {
     alignItems: 'center',
-    gap: 15,
+    gap: 20, // Większy odstęp między ikoną a tekstem
+    paddingBottom: 30, // Duży odstęp pod napisem "Zdjęcie zobaczysz po dopasowaniu"
   },
   lockIconCircle: {
     width: 60, // Jeszcze mniejsza ikona, aby nie nachodziła na tekst
@@ -643,8 +645,9 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     fontFamily: 'Montserrat_400Regular',
     fontSize: 13,
-    marginTop: 4,
+    marginTop: 8,
     textAlign: 'center',
+    marginBottom: 20, // Dodatkowy odstęp pod napisem
   },
   overlayContentModern: {
     gap: 14,
