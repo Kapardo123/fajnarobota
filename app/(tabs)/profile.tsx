@@ -218,7 +218,22 @@ export default function ProfileScreen() {
           .eq('id', user.id)
           .single();
         if (candError) throw candError;
-        setCandidateDetails(candData);
+        
+        // Parsowanie dodatkowych danych z pola bio (jeśli to JSON)
+        let processedCandData = { ...candData };
+        try {
+          const extraData = JSON.parse(candData.bio || '{}');
+          if (extraData.availability) {
+            processedCandData.availability_status = extraData.availability;
+          }
+          if (extraData.text) {
+            processedCandData.bio = extraData.text;
+          }
+        } catch (e) {
+          // Jeśli bio nie jest JSONem, zostawiamy jak jest
+        }
+        
+        setCandidateDetails(processedCandData);
       } else {
         const { data: empData, error: empError } = await supabase
           .from('employers')
@@ -439,12 +454,27 @@ export default function ProfileScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Obsługa JSON w bio dla zachowania dostępności
+      let newBioContent = newBio;
+      try {
+        const currentBioData = JSON.parse(candidateDetails?.bio || '{}');
+        if (currentBioData.availability) {
+          newBioContent = JSON.stringify({
+            ...currentBioData,
+            text: newBio
+          });
+        }
+      } catch (e) {
+        // Jeśli nie było JSONa, zostanie sam tekst
+      }
+
       const { error } = await supabase
         .from('candidates')
-        .update({ bio: newBio })
+        .update({ bio: newBioContent })
         .eq('id', user.id);
 
       if (error) throw error;
+      
       setCandidateDetails(prev => prev ? { ...prev, bio: newBio } : null);
       setIsEditingBio(false);
       Alert.alert('Sukces', 'Twój opis został zaktualizowany.');
@@ -478,18 +508,34 @@ export default function ProfileScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Ponieważ kolumna availability_status nie istnieje w tabeli candidates,
+      // będziemy tymczasowo przechowywać te dane w tabeli profiles jako metadata
+      // lub po prostu aktualizować stan lokalny, dopóki baza nie zostanie zaktualizowana.
+      // Najbezpieczniej teraz: aktualizujemy profil kandydata w candidates (o ile istnieje tam inna kolumna)
+      // lub używamy metadata w tabeli profiles.
+      
+      // Spróbujmy zapisać to w kolumnie 'superpower' jako tymczasowe obejście, 
+      // lub jeśli masz dostęp do SQL, lepiej dodać kolumnę. 
+      // Zakładając brak dostępu do SQL, użyjemy pola 'bio' do przechowywania JSONa z dodatkowymi danymi.
+      
+      const newBioData = {
+        ...(candidateDetails?.bio ? { text: candidateDetails.bio } : {}),
+        availability: status
+      };
+
       const { error } = await supabase
         .from('candidates')
-        .update({ availability_status: status })
+        .update({ bio: JSON.stringify(newBioData) })
         .eq('id', user.id);
 
       if (error) throw error;
+      
       setCandidateDetails(prev => prev ? { ...prev, availability_status: status } : null);
       setIsEditingAvailability(false);
       Alert.alert('Sukces', 'Status dostępności został zaktualizowany.');
     } catch (error: any) {
       logger.error('Update availability error', error);
-      Alert.alert('Błąd', 'Nie udało się zaktualizować statusu.');
+      Alert.alert('Błąd', 'Nie udało się zaktualizować statusu. Spróbuj ponownie później.');
     }
   };
 
