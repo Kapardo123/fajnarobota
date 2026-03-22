@@ -49,6 +49,17 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return Math.round(d);
 };
 
+// Formats full name to "Firstname L."
+const formatDisplayName = (fullName: string) => {
+  if (!fullName) return '';
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length <= 1) return fullName;
+  
+  const firstName = parts[0];
+  const lastName = parts[parts.length - 1];
+  return `${firstName} ${lastName.charAt(0).toUpperCase()}.`;
+};
+
 export default function SwipeScreen() {
   const [index, setIndex] = useState(0);
   const [matchVisible, setMatchVisible] = useState(false);
@@ -162,23 +173,27 @@ export default function SwipeScreen() {
 
         const { data: candidates } = await query;
         
-        if (candidates) {
-          const candidateCards: CardData[] = candidates.map(cand => ({
-            id: cand.id,
-            type: 'candidate',
-            title: `${cand.profiles?.full_name || 'Kandydat'}, ${cand.age || ''}`,
-            subtitle: cand.superpower || 'Bohater',
-            image: cand.profiles?.avatar_url || `https://picsum.photos/seed/${cand.id}/600/800`,
-            price: `Min. ${cand.salary_expectation} zł/h`,
-            tags: (cand.skills || []).map((skill: string) => ({ icon: 'star-outline', text: skill })),
-            matchScore: 85 + Math.floor(Math.random() * 15),
-            isBlurred: cand.blind_hiring,
-            bio: cand.bio,
-            experienceHistory: cand.experience_history,
-            locationName: cand.profiles?.location_name,
-            lat: cand.profiles?.lat,
-            lng: cand.profiles?.lng,
-          }));
+          const candidateCards: CardData[] = candidates.map(cand => {
+            const fullName = cand.profiles?.full_name || 'Kandydat';
+            const age = cand.age ? `, ${cand.age}` : '';
+            
+            return {
+              id: cand.id,
+              type: 'candidate',
+              title: `${formatDisplayName(fullName)}${age}`,
+              subtitle: cand.superpower || 'Bohater',
+              image: cand.profiles?.avatar_url || `https://picsum.photos/seed/${cand.id}/600/800`,
+              price: `Min. ${cand.salary_expectation} zł/h`,
+              tags: (cand.skills || []).map((skill: string) => ({ icon: 'star-outline', text: skill })),
+              matchScore: 85 + Math.floor(Math.random() * 15),
+              isBlurred: cand.blind_hiring,
+              bio: cand.bio,
+              experienceHistory: cand.experience_history,
+              locationName: cand.profiles?.location_name,
+              lat: cand.profiles?.lat,
+              lng: cand.profiles?.lng,
+            };
+          });
           setCards(candidateCards);
         }
       }
@@ -236,11 +251,18 @@ export default function SwipeScreen() {
       if (direction === 'right') {
         let isMatch = false;
         let matchData: any = null;
+        let fullMatchName = '';
 
         if (item.type === 'job') {
           // Pobierz pracodawcę tej oferty
-          const { data: job } = await supabase.from('jobs').select('employer_id').eq('id', item.id).single();
+          const { data: job } = await supabase
+            .from('jobs')
+            .select('employer_id, profiles(full_name)')
+            .eq('id', item.id)
+            .single();
+            
           if (job) {
+            fullMatchName = (job.profiles as any)?.full_name || item.title;
             // Sprawdź czy pracodawca polubił kandydata
             const { data: employerSwipe } = await supabase
               .from('swipes')
@@ -257,6 +279,17 @@ export default function SwipeScreen() {
           }
         } else {
           // Pracodawca swipe'uje kandydata
+          // Pobierz pełne dane kandydata
+          const { data: candidateProfile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', item.id)
+            .single();
+            
+          if (candidateProfile) {
+            fullMatchName = candidateProfile.full_name;
+          }
+
           // Sprawdź czy kandydat polubił jakąkolwiek ofertę tego pracodawcy
           const { data: employerJobs } = await supabase.from('jobs').select('id').eq('employer_id', user.id);
           const jobIds = employerJobs?.map(j => j.id) || [];
@@ -282,7 +315,8 @@ export default function SwipeScreen() {
           // Zapisz Match w bazie
           const { error: matchError } = await supabase.from('matches').insert(matchData);
           if (!matchError) {
-            setMatchedItem(item);
+            const matchItemWithFullName = { ...item, title: fullMatchName };
+            setMatchedItem(matchItemWithFullName);
             setMatchVisible(true);
           }
         }
