@@ -13,3 +13,32 @@ export const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
     detectSessionInUrl: false,
   },
 });
+
+export const uploadAvatar = async (uri: string, userId: string) => {
+  try {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const arrayBuffer = await new Response(blob).arrayBuffer();
+    
+    const fileName = `${userId}/${Date.now()}.jpg`;
+    const filePath = `${fileName}`;
+
+    const { data, error } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, arrayBuffer, {
+        contentType: 'image/jpeg',
+        upsert: true
+      });
+
+    if (error) throw error;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    throw error;
+  }
+};

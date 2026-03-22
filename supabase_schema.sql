@@ -4,6 +4,9 @@ create table public.profiles (
   role text check (role in ('candidate', 'employer')) not null,
   full_name text,
   avatar_url text,
+  location_name text,
+  lat double precision,
+  lng double precision,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -24,7 +27,8 @@ create table public.employers (
   company_name text,
   company_description text,
   industry text,
-  average_salary text
+  average_salary text,
+  logo_url text
 );
 
 -- Tabela ofert pracy
@@ -33,7 +37,9 @@ create table public.jobs (
   employer_id uuid references public.employers(id) on delete cascade not null,
   title text not null,
   salary_range text,
-  location text,
+  location_name text,
+  lat double precision,
+  lng double precision,
   description text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -111,3 +117,31 @@ create policy "Users can view messages from own matches." on public.messages for
 
 create policy "Users can send messages to own matches." on public.messages for insert 
   with check (auth.uid() = sender_id and exists (select 1 from public.matches where id = match_id and (candidate_id = auth.uid() or employer_id = auth.uid())));
+
+-- Funkcja do obliczania odległości (Haversine formula)
+create or replace function public.calculate_distance(lat1 double precision, lon1 double precision, lat2 double precision, lon2 double precision)
+returns double precision as $$
+declare
+  r double precision := 6371; -- Promień Ziemi w km
+  dlat double precision := radians(lat2 - lat1);
+  dlon double precision := radians(lon2 - lon1);
+  a double precision;
+  c double precision;
+begin
+  a := sin(dlat/2) * sin(dlat/2) + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2) * sin(dlon/2);
+  c := 2 * atan2(sqrt(a), sqrt(1-a));
+  return r * c;
+end;
+$$ language plpgsql immutable;
+
+-- RPC do pobierania ofert w promieniu
+create or replace function public.get_jobs_within_radius(user_lat double precision, user_lng double precision, radius_km double precision)
+returns setof public.jobs as $$
+begin
+  return query
+  select *
+  from public.jobs
+  where calculate_distance(user_lat, user_lng, lat, lng) <= radius_km
+  order by calculate_distance(user_lat, user_lng, lat, lng) asc;
+end;
+$$ language plpgsql stable;

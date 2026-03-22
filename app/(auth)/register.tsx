@@ -6,7 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import { Config } from '../../constants/Config';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { supabase } from '../../src/lib/supabase';
+import * as ImagePicker from 'expo-image-picker';
+import { supabase, uploadAvatar } from '../../src/lib/supabase';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function RegisterScreen() {
     profileMode: 'real' as 'real' | 'avatar' | 'work',
     blindHiring: true, // Domyślnie włączone
     photoUrl: Config.DEFAULT_CANDIDATE_PHOTO,
+    locationName: '',
   });
 
   // Employer data
@@ -38,10 +40,29 @@ export default function RegisterScreen() {
     salaryRange: '',
     description: '',
     photoUrl: Config.DEFAULT_EMPLOYER_PHOTO,
+    locationName: '',
   });
 
   const SKILLS_LIST = ['Gastronomia', 'Barista', 'Sprzedawca', 'Obsługa klienta', 'Magazynier', 'Student', 'Angielski B2', 'Kierowca'];
   const SUPERPOWERS = ['#OgarniamChaos', '#NigdyNieSpóźniony', '#MistrzExcela', '#UśmiechNaTwarzy', '#SzybkiJakBłyskawica'];
+  const SALARY_RANGES = ['25-30 PLN/h', '30-35 PLN/h', '35-40 PLN/h', '40-45 PLN/h', '45-50 PLN/h', '50-60 PLN/h', '60+ PLN/h'];
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      if (role === 'candidate') {
+        setCandidateData({ ...candidateData, photoUrl: result.assets[0].uri });
+      } else {
+        setEmployerData({ ...employerData, photoUrl: result.assets[0].uri });
+      }
+    }
+  };
 
   const handleFinish = async () => {
     setLoading(true);
@@ -57,14 +78,34 @@ export default function RegisterScreen() {
 
       const userId = authData.user.id;
 
-      // 2. Utworzenie profilu w tabeli profiles
+      // 2. Upload zdjęcia (jeśli wybrano własne)
+      let finalAvatarUrl = role === 'candidate' ? candidateData.photoUrl : employerData.photoUrl;
+      
+      if (finalAvatarUrl !== Config.DEFAULT_CANDIDATE_PHOTO && finalAvatarUrl !== Config.DEFAULT_EMPLOYER_PHOTO) {
+        try {
+          finalAvatarUrl = await uploadAvatar(finalAvatarUrl, userId);
+        } catch (uploadError) {
+          console.error('Photo upload failed, using default', uploadError);
+          // W przypadku błędu uploadu używamy defaulta, żeby nie blokować rejestracji
+          finalAvatarUrl = role === 'candidate' ? Config.DEFAULT_CANDIDATE_PHOTO : Config.DEFAULT_EMPLOYER_PHOTO;
+        }
+      }
+
+      // 3. Utworzenie profilu w tabeli profiles
+      // Symulacja geokodowania dla wybranej miejscowości
+      const mockLat = 52.2297 + (Math.random() - 0.5) * 0.5;
+      const mockLng = 21.0122 + (Math.random() - 0.5) * 0.5;
+
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
           id: userId,
           role,
           full_name: role === 'candidate' ? candidateData.name : employerData.companyName,
-          avatar_url: role === 'candidate' ? candidateData.photoUrl : employerData.photoUrl,
+          avatar_url: finalAvatarUrl,
+          location_name: role === 'candidate' ? candidateData.locationName : employerData.locationName,
+          lat: mockLat,
+          lng: mockLng,
         });
 
       if (profileError) throw profileError;
@@ -244,6 +285,16 @@ export default function RegisterScreen() {
                   outlineColor={Colors.border}
                   activeOutlineColor={Colors.primary}
                 />
+                <TextInput
+                  label="Miejscowość"
+                  value={candidateData.locationName}
+                  onChangeText={(text) => setCandidateData({...candidateData, locationName: text})}
+                  mode="outlined"
+                  style={styles.input}
+                  outlineColor={Colors.border}
+                  activeOutlineColor={Colors.primary}
+                  placeholder="np. Warszawa"
+                />
                 <Text style={styles.sectionLabel}>Oczekiwania finansowe</Text>
                 <View style={styles.chipContainer}>
                   {Config.SALARY_RANGES.map(range => (
@@ -273,6 +324,16 @@ export default function RegisterScreen() {
                   style={styles.input}
                   outlineColor={Colors.border}
                   activeOutlineColor={Colors.primary}
+                />
+                <TextInput
+                  label="Miejscowość firmy"
+                  value={employerData.locationName}
+                  onChangeText={(text) => setEmployerData({...employerData, locationName: text})}
+                  mode="outlined"
+                  style={styles.input}
+                  outlineColor={Colors.border}
+                  activeOutlineColor={Colors.primary}
+                  placeholder="np. Warszawa"
                 />
                 <Text style={styles.sectionLabel}>Oferowane wynagrodzenie (średnie)</Text>
                 <View style={styles.chipContainer}>
@@ -359,6 +420,16 @@ export default function RegisterScreen() {
               <MaterialCommunityIcons name="check-decagram" size={60} color={Colors.primary} />
               <Text style={styles.summaryText}>Wszystko gotowe! Kliknij zakończ, aby utworzyć profil firmy.</Text>
             </View>
+            {/* Przycisk zapasowy na wypadek problemów z footerem */}
+            <Button 
+              mode="contained" 
+              onPress={handleFinish}
+              loading={loading}
+              style={{ marginTop: 20 }}
+              buttonColor={Colors.primary}
+            >
+              Potwierdź i Zakończ
+            </Button>
           </View>
         );
 
@@ -375,7 +446,7 @@ export default function RegisterScreen() {
               />
               <Button 
                 mode="outlined" 
-                onPress={() => {}} // Tu w przyszłości wybór zdjęcia
+                onPress={pickImage}
                 style={styles.uploadBtn}
                 textColor={Colors.primary}
                 icon="camera"

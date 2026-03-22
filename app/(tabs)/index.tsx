@@ -1,8 +1,9 @@
-import { View, StyleSheet, Dimensions, Animated, PanResponder, ImageBackground, Modal, Image, ActivityIndicator } from 'react-native';
-import { Card, Text, Button, Chip, IconButton, Portal } from 'react-native-paper';
+import { View, StyleSheet, Dimensions, Animated, PanResponder, ImageBackground, Modal, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Card, Text, Button, Chip, IconButton, Portal, Dialog } from 'react-native-paper';
 import { useState, useRef, useEffect } from 'react';
 import { Colors } from '../../constants/Colors';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Config } from '../../constants/Config';
+import { supabase } from '../../src/lib/supabase';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../src/lib/supabase';
@@ -30,6 +31,8 @@ export default function SwipeScreen() {
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<CardData[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [searchRadius, setSearchRadius] = useState(10);
+  const [showRadiusDialog, setShowRadiusDialog] = useState(false);
   const position = useRef(new Animated.ValueXY()).current;
   const router = useRouter();
 
@@ -60,31 +63,48 @@ export default function SwipeScreen() {
       const swipedIds = swiped?.map(s => s.target_id) || [];
 
       if (profile?.role === 'candidate') {
-        // Kandydat widzi oferty pracy, których jeszcze nie ocenił
-        let query = supabase
-          .from('jobs')
-          .select('*, employers(company_name)');
+        // Kandydat widzi oferty pracy w promieniu
+        let { data: jobs, error: jobsError } = await supabase
+          .rpc('get_jobs_within_radius', {
+            user_lat: profile.lat || 52.2297, // Fallback do Warszawy jeśli brak w profilu
+            user_lng: profile.lng || 21.0122,
+            radius_km: searchRadius
+          });
         
-        if (swipedIds.length > 0) {
-          query = query.not('id', 'in', `(${swipedIds.join(',')})`);
-        }
+        if (jobsError) throw jobsError;
 
-        const { data: jobs } = await query;
+        // Filtruj już swipe'owane
+        if (swipedIds.length > 0) {
+          jobs = jobs?.filter((j: any) => !swipedIds.includes(j.id)) || [];
+        }
         
-        if (jobs) {
-          const jobCards: CardData[] = jobs.map(job => ({
-            id: job.id,
-            type: 'job',
-            title: job.title,
-            subtitle: job.employers?.company_name || 'Firma',
-            image: `https://picsum.photos/seed/${job.id}/600/800`,
-            price: job.salary_range || 'Do uzgodnienia',
-            tags: [
-              { icon: 'map-marker', text: job.location || 'Warszawa' },
-              { icon: 'flash', text: 'Od zaraz' },
-            ],
-          }));
+        if (jobs && jobs.length > 0) {
+          // Pobierz nazwy firm i logo dla tych ofert
+          const employerIds = [...new Set(jobs.map((j: any) => j.employer_id))];
+          const { data: employers } = await supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .in('id', employerIds);
+
+          const jobCards: CardData[] = jobs.map((job: any) => {
+            const employer = employers?.find(e => e.id === job.employer_id);
+            return {
+              id: job.id,
+              type: 'job',
+              title: job.title,
+              subtitle: employer?.full_name || 'Firma',
+              image: employer?.avatar_url || `https://picsum.photos/seed/${job.id}/600/800`,
+              price: job.salary_range || 'Do uzgodnienia',
+              tags: [
+                { icon: 'map-marker', text: job.location_name || 'Lokalizacja' },
+                { icon: 'flash', text: 'Od zaraz' },
+              ],
+            };
+          });
           setCards(jobCards);
+        } else {
+          setCards([]);
+          setShowRadiusDialog(true);
         }
       } else {
         // Pracodawca widzi kandydatów, których jeszcze nie ocenił
@@ -310,9 +330,17 @@ export default function SwipeScreen() {
           </Animated.View>
         ) : (
           <View style={styles.emptyState}>
-            <Text variant="headlineSmall">To wszystko na dziś! 🎉</Text>
-            <Button mode="contained" onPress={() => { setIndex(0); fetchData(); }} style={styles.refreshBtn} buttonColor={Colors.primary}>
-              Odśwież
+            <MaterialCommunityIcons name="map-marker-radius-outline" size={80} color={Colors.textLight} />
+            <Text variant="headlineSmall" style={{ textAlign: 'center' }}>
+              Brak ofert w Twojej okolicy ({searchRadius}km)
+            </Text>
+            <Button 
+              mode="contained" 
+              onPress={() => setShowRadiusDialog(true)}
+              style={styles.refreshBtn}
+              buttonColor={Colors.primary}
+            >
+              Zwiększ zasięg szukania
             </Button>
           </View>
         )}
@@ -384,6 +412,33 @@ export default function SwipeScreen() {
             </Button>
           </View>
         </Modal>
+      </Portal>
+
+      <Portal>
+        <Dialog visible={showRadiusDialog} onDismiss={() => setShowRadiusDialog(false)} style={{ backgroundColor: Colors.surface }}>
+          <Dialog.Title style={{ fontFamily: 'Montserrat_700Bold' }}>Zwiększ zasięg szukania</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium">Nie znaleźliśmy ofert w promieniu {searchRadius}km. O ile chcesz zwiększyć zasięg?</Text>
+            <View style={[styles.chipContainer, { marginTop: 20 }]}>
+              {[20, 50, 100, 500].map(radius => (
+                <Chip 
+                  key={radius} 
+                  onPress={() => {
+                    setSearchRadius(radius);
+                    setShowRadiusDialog(false);
+                    fetchData();
+                  }}
+                  style={{ backgroundColor: Colors.background }}
+                >
+                  +{radius - searchRadius > 0 ? radius - searchRadius : radius} km (Razem {radius}km)
+                </Chip>
+              ))}
+            </View>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowRadiusDialog(false)} textColor={Colors.textLight}>Anuluj</Button>
+          </Dialog.Actions>
+        </Dialog>
       </Portal>
     </View>
   );
@@ -557,5 +612,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 16,
     marginBottom: 16,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
 });

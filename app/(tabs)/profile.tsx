@@ -5,7 +5,8 @@ import { Colors } from '../../constants/Colors';
 import { Config } from '../../constants/Config';
 import { useState, useEffect } from 'react';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { supabase } from '../../src/lib/supabase';
+import * as ImagePicker from 'expo-image-picker';
+import { supabase, uploadAvatar } from '../../src/lib/supabase';
 
 interface JobOffer {
   id: string;
@@ -20,6 +21,9 @@ interface UserProfile {
   role: 'candidate' | 'employer';
   full_name: string;
   avatar_url: string;
+  location_name?: string;
+  lat?: number;
+  lng?: number;
 }
 
 interface CandidateDetails {
@@ -44,12 +48,45 @@ export default function ProfileScreen() {
   const [employerDetails, setEmployerDetails] = useState<EmployerDetails | null>(null);
   const [jobs, setJobs] = useState<JobOffer[]>([]);
   const [showAddJob, setShowAddJob] = useState(false);
-  const [newJob, setNewJob] = useState({ title: '', salary: '', location: '' });
+  const [newJob, setNewJob] = useState({ title: '', salary: '', locationName: '' });
   const [isEditingSalary, setIsEditingSalary] = useState(false);
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [locationInput, setLocationLocationInput] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  const pickAndUploadImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (!result.canceled && profile) {
+        setUploading(true);
+        const publicUrl = await uploadAvatar(result.assets[0].uri, profile.id);
+        
+        const { error } = await supabase
+          .from('profiles')
+          .update({ avatar_url: publicUrl })
+          .eq('id', profile.id);
+
+        if (error) throw error;
+
+        setProfile({ ...profile, avatar_url: publicUrl });
+        Alert.alert('Sukces', 'Zdjęcie profilowe zostało zaktualizowane.');
+      }
+    } catch (error: any) {
+      Alert.alert('Błąd', 'Nie udało się zaktualizować zdjęcia.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -98,7 +135,7 @@ export default function ProfileScreen() {
           id: j.id,
           title: j.title,
           salary: j.salary_range,
-          location: j.location,
+          location: j.location_name,
           matches: 0
         })));
       }
@@ -110,10 +147,14 @@ export default function ProfileScreen() {
   };
 
   const handleAddJob = async () => {
-    if (newJob.title && newJob.salary) {
+    if (newJob.title && newJob.salary && newJob.locationName) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
+
+        // Symulacja geokodowania dla nowej oferty
+        const mockLat = 52.2297 + (Math.random() - 0.5) * 0.5;
+        const mockLng = 21.0122 + (Math.random() - 0.5) * 0.5;
 
         const { data, error } = await supabase
           .from('jobs')
@@ -121,7 +162,9 @@ export default function ProfileScreen() {
             employer_id: user.id,
             title: newJob.title,
             salary_range: newJob.salary,
-            location: newJob.location || 'Warszawa',
+            location_name: newJob.locationName,
+            lat: mockLat,
+            lng: mockLng,
           })
           .select()
           .single();
@@ -132,10 +175,10 @@ export default function ProfileScreen() {
           id: data.id,
           title: data.title,
           salary: data.salary_range,
-          location: data.location,
+          location: data.location_name,
           matches: 0
         }]);
-        setNewJob({ title: '', salary: '', location: '' });
+        setNewJob({ title: '', salary: '', locationName: '' });
         setShowAddJob(false);
       } catch (error: any) {
         Alert.alert('Błąd', 'Nie udało się dodać oferty.');
@@ -194,6 +237,40 @@ export default function ProfileScreen() {
     }
   };
 
+  const updateLocation = async () => {
+    if (!locationInput.trim()) return;
+    
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // W prawdziwej aplikacji użylibyśmy tutaj API do geokodowania (np. Google Maps lub OpenStreetMap)
+      // Na potrzeby prototypu symulujemy losowe współrzędne dla wpisanej nazwy
+      const mockLat = 52.2297 + (Math.random() - 0.5) * 0.5;
+      const mockLng = 21.0122 + (Math.random() - 0.5) * 0.5;
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          location_name: locationInput,
+          lat: mockLat,
+          lng: mockLng
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setProfile(prev => prev ? { ...prev, location_name: locationInput, lat: mockLat, lng: mockLng } : null);
+      setIsEditingLocation(false);
+      Alert.alert('Sukces', 'Lokalizacja została zaktualizowana.');
+    } catch (error: any) {
+      Alert.alert('Błąd', 'Nie udało się zaktualizować lokalizacji.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
@@ -207,6 +284,15 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <View style={styles.avatarFrame}>
           <Avatar.Image size={100} source={{ uri: profile?.avatar_url }} style={styles.avatar} />
+          <IconButton
+            icon="camera"
+            size={20}
+            containerColor={Colors.primary}
+            iconColor="#fff"
+            style={styles.editAvatarBtn}
+            onPress={pickAndUploadImage}
+            loading={uploading}
+          />
         </View>
         <Text variant="headlineSmall" style={styles.name}>{profile?.full_name}</Text>
         {candidateDetails?.superpower && (
@@ -251,6 +337,16 @@ export default function ProfileScreen() {
             )}
           />
           <List.Item
+            title="Moja Lokalizacja"
+            description={profile?.location_name || 'Nie ustawiono'}
+            left={props => <List.Icon {...props} icon="map-marker" color={Colors.primary} />}
+            right={props => <List.Icon {...props} icon="pencil-outline" color={Colors.textLight} />}
+            onPress={() => {
+              setLocationLocationInput(profile?.location_name || '');
+              setIsEditingLocation(true);
+            }}
+          />
+          <List.Item
             title="Moje Umiejętności"
             description={candidateDetails?.skills?.join(', ')}
             left={props => <List.Icon {...props} icon="star-outline" color={Colors.primary} />}
@@ -270,8 +366,19 @@ export default function ProfileScreen() {
   const renderEmployerProfile = () => (
     <>
       <View style={styles.header}>
-        <Avatar.Image size={100} source={{ uri: profile?.avatar_url || 'https://picsum.photos/seed/company/200' }} style={styles.avatar} />
-        <Text variant="headlineSmall" style={styles.name}>{employerDetails?.company_name}</Text>
+        <View style={styles.avatarFrame}>
+          <Avatar.Image size={100} source={{ uri: profile?.avatar_url }} style={styles.avatar} />
+          <IconButton
+            icon="camera"
+            size={20}
+            containerColor={Colors.primary}
+            iconColor="#fff"
+            style={styles.editAvatarBtn}
+            onPress={pickAndUploadImage}
+            loading={uploading}
+          />
+        </View>
+        <Text variant="headlineSmall" style={styles.name}>{profile?.full_name}</Text>
         <Text variant="labelMedium" style={styles.companyType}>{employerDetails?.company_description || 'Brak opisu'}</Text>
         
         <View style={styles.statsRow}>
@@ -299,6 +406,16 @@ export default function ProfileScreen() {
             left={props => <List.Icon {...props} icon="cash" color={Colors.primary} />}
             right={props => <List.Icon {...props} icon="pencil-outline" color={Colors.textLight} />}
             onPress={() => setIsEditingSalary(true)}
+          />
+          <List.Item
+            title="Lokalizacja firmy"
+            description={profile?.location_name || 'Nie ustawiono'}
+            left={props => <List.Icon {...props} icon="map-marker" color={Colors.primary} />}
+            right={props => <List.Icon {...props} icon="pencil-outline" color={Colors.textLight} />}
+            onPress={() => {
+              setLocationLocationInput(profile?.location_name || '');
+              setIsEditingLocation(true);
+            }}
           />
         </List.Section>
 
@@ -356,7 +473,7 @@ export default function ProfileScreen() {
             title="Wyloguj się"
             left={props => <List.Icon {...props} icon="logout" color={Colors.error} />}
             titleStyle={{ color: Colors.error, fontFamily: 'Montserrat_700Bold' }}
-            onPress={handleLogout}
+            onPress={() => handleLogout()}
           />
         </List.Section>
       </View>
@@ -390,8 +507,8 @@ export default function ProfileScreen() {
             />
             <TextInput
               label="Lokalizacja"
-              value={newJob.location}
-              onChangeText={(text) => setNewJob({...newJob, location: text})}
+              value={newJob.locationName}
+              onChangeText={(text) => setNewJob({...newJob, locationName: text})}
               mode="outlined"
               style={styles.modalInput}
               outlineColor={Colors.border}
@@ -452,6 +569,39 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal edycji lokalizacji */}
+      <Modal visible={isEditingLocation} onDismiss={() => setIsEditingLocation(false)} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text variant="headlineSmall" style={styles.modalTitle}>Ustaw lokalizację</Text>
+              <IconButton icon="close" onPress={() => setIsEditingLocation(false)} />
+            </View>
+
+            <TextInput
+              label="Miejscowość"
+              value={locationInput}
+              onChangeText={setLocationLocationInput}
+              mode="outlined"
+              style={styles.modalInput}
+              outlineColor={Colors.border}
+              activeOutlineColor={Colors.primary}
+              placeholder="np. Warszawa, Kraków..."
+            />
+
+            <Button 
+              mode="contained" 
+              onPress={updateLocation}
+              style={styles.modalSubmitBtn}
+              buttonColor={Colors.primary}
+              contentStyle={styles.modalSubmitBtnContent}
+            >
+              Zapisz lokalizację
+            </Button>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -481,7 +631,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     marginBottom: 16,
-    overflow: 'hidden',
+    position: 'relative',
+  },
+  editAvatarBtn: {
+    position: 'absolute',
+    bottom: -5,
+    right: -5,
+    margin: 0,
   },
   avatar: {
     backgroundColor: Colors.primary,
