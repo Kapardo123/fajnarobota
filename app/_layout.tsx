@@ -42,9 +42,14 @@ export default function RootLayout() {
     // Początkowe sprawdzenie sesji przy załadowaniu aplikacji
     const checkInitialSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session && segments.length === 0) {
+      const currentPath = segments.join('/');
+      
+      if (session && (currentPath === '' || currentPath === 'index')) {
         console.log('Auth: Initial session found, redirecting to tabs...');
         router.replace('/(tabs)');
+      } else if (!session && segments[0] === '(tabs)') {
+        console.log('Auth: No session found, redirecting to index...');
+        router.replace('/');
       }
     };
     checkInitialSession();
