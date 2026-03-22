@@ -60,25 +60,41 @@ export default function ProfileScreen() {
   }, []);
 
   const handleLogout = async () => {
-    console.log('--- LOGOUT INITIATED ---');
-    logger.action('Wyloguj (Bezpośrednio)');
+    logger.action('Wyloguj');
     
-    try {
-      // 1. Czyścimy stan lokalny natychmiast
-      setProfile(null);
-      setCandidateDetails(null);
-      setEmployerDetails(null);
-      
-      // 2. Przekierowanie natychmiastowe
-      router.replace('/');
-      
-      // 3. Supabase w tle
-      supabase.auth.signOut().catch(e => console.error('SignOut error:', e));
-      
-    } catch (error) {
-      console.error('Logout error:', error);
-      router.replace('/');
-    }
+    Alert.alert(
+      'Wyloguj się',
+      'Czy na pewno chcesz się wylogować?',
+      [
+        { text: 'Anuluj', style: 'cancel' },
+        {
+          text: 'Wyloguj',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              // 1. Wyloguj w Supabase - CZEKAMY, żeby sesja została wyczyszczona
+              const { error } = await supabase.auth.signOut();
+              if (error) throw error;
+              
+              // 2. Czyścimy stan lokalny
+              setProfile(null);
+              setCandidateDetails(null);
+              setEmployerDetails(null);
+              
+              // 3. Przekierowanie do strony głównej (Hero/Landing)
+              router.replace('/');
+            } catch (error: any) {
+              logger.error('Logout error', error);
+              // W razie błędu i tak próbujemy przenieść do startu
+              router.replace('/');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const pickAndUploadImage = async () => {
@@ -464,15 +480,6 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Button 
-        mode="contained" 
-        onPress={handleLogout}
-        buttonColor={Colors.error}
-        style={[styles.logoutBtn, { marginTop: 20 }]}
-        icon="logout"
-      >
-        Wyloguj (TEST)
-      </Button>
       {profile?.role === 'candidate' ? renderCandidateProfile() : renderEmployerProfile()}
 
       <View style={styles.section}>
