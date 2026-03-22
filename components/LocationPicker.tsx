@@ -33,23 +33,28 @@ export default function LocationPicker({
 
   // Debounce search to avoid too many API calls
   useEffect(() => {
+    let isMounted = true;
     const timer = setTimeout(() => {
-      if (query.length > 2 && showResults) {
+      if (query.length > 2 && showResults && isMounted) {
         searchLocation(query);
       } else {
         setResults([]);
       }
     }, 500);
 
-    return () => clearTimeout(timer);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, [query, showResults]);
 
   const searchLocation = async (text: string) => {
     try {
       setLoading(true);
       // Używamy Nominatim (OpenStreetMap) API - darmowe, nie wymaga klucza
+      // Dodajemy featuretype=settlement aby skupić się na miejscowościach
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&countrycodes=pl&addressdetails=1&limit=5`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&countrycodes=pl&addressdetails=1&limit=5&featuretype=settlement`,
         {
           headers: {
             'User-Agent': 'FajnaRobotaApp/1.0'
@@ -57,7 +62,13 @@ export default function LocationPicker({
         }
       );
       const data = await response.json();
-      setResults(data);
+      
+      // Filtrujemy duplikaty po place_id (na wszelki wypadek)
+      const uniqueData = data.filter((v: any, i: number, a: any[]) => 
+        a.findIndex(t => t.place_id === v.place_id) === i
+      );
+      
+      setResults(uniqueData);
     } catch (error) {
       logger.error('Location search error', error);
     } finally {
@@ -66,11 +77,13 @@ export default function LocationPicker({
   };
 
   const handleSelect = (item: LocationResult) => {
-    setQuery(item.display_name);
+    // Czyścimy nazwę, aby była czytelniejsza (np. tylko Miasto, Powiat/Województwo)
+    const displayName = item.display_name.split(',').slice(0, 2).join(',').trim();
+    setQuery(displayName);
     setShowResults(false);
     setResults([]);
     onLocationSelect({
-      name: item.display_name,
+      name: displayName,
       lat: parseFloat(item.lat),
       lng: parseFloat(item.lon)
     });
@@ -153,7 +166,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 8,
+    borderRadius: 12,
     marginTop: 4,
     maxHeight: 250,
     elevation: 10,
@@ -165,13 +178,15 @@ const styles = StyleSheet.create({
     top: 55,
     left: 0,
     right: 0,
-    zIndex: 3000, // Jeszcze wyższy zIndex dla wyników
+    zIndex: 9999, // Ekstremalnie wysoki zIndex
+    overflow: 'hidden', // Aby zaokrąglenia działały z listą
   },
   list: {
     flexGrow: 0,
   },
   resultTitle: {
     fontSize: 14,
+    fontFamily: 'Montserrat_400Regular',
   },
   emptyText: {
     padding: 20,
