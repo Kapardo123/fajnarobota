@@ -296,7 +296,11 @@ export default function SwipeScreen() {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (evt, gs) => {
+        // Przejmij gest tylko jeśli ruch poziomy jest wyraźny (swipe)
+        return Math.abs(gs.dx) > 20;
+      },
       onPanResponderMove: (event, gesture) => {
         position.setValue({ x: gesture.dx, y: 0 });
       },
@@ -475,198 +479,191 @@ export default function SwipeScreen() {
     <View style={{ flex: 1 }}>
       {/* FRONT CARD */}
       <Animated.View style={[styles.cardContainerInner, { transform: [{ rotateY: frontInterpolate }], opacity: frontOpacity }]}>
-        <Card style={styles.card}>
-          <ImageBackground
-            source={{ uri: item.image }}
-            style={styles.cardImage}
-            blurRadius={item.isBlurred ? 40 : 0}
-            imageStyle={{ 
-              opacity: item.isBlurred ? 0.7 : 1,
-              resizeMode: 'cover'
-            }}
-          >
-            <LinearGradient
-              colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)', '#000']}
-              locations={[0, 0.2, 0.4, 0.7, 1.0]}
-              style={styles.gradient}
+        <TouchableOpacity activeOpacity={1} onPress={toggleFlip} style={{ flex: 1 }}>
+          <Card style={styles.card}>
+            <ImageBackground
+              source={{ uri: item.image }}
+              style={styles.cardImage}
+              blurRadius={item.isBlurred ? 40 : 0}
+              imageStyle={{ 
+                opacity: item.isBlurred ? 0.7 : 1,
+                resizeMode: 'cover'
+              }}
             >
-              {/* TOP SECTION */}
-              <View style={styles.topBadgesRow}>
-                <View style={styles.matchBadgeModern}>
-                  <MaterialCommunityIcons name="map-marker" size={14} color={Colors.primary} />
-                  <Text style={styles.matchTextModern}>
-                    {item.locationName?.split(',')[0].toUpperCase() || 'LOKALIZACJA'}
-                  </Text>
+              <LinearGradient
+                colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)', '#000']}
+                locations={[0, 0.2, 0.4, 0.7, 1.0]}
+                style={styles.gradient}
+              >
+                {/* TOP SECTION */}
+                <View style={styles.topBadgesRow}>
+                  <View style={styles.matchBadgeModern}>
+                    <MaterialCommunityIcons name="map-marker" size={14} color={Colors.primary} />
+                    <Text style={styles.matchTextModern}>
+                      {item.locationName?.split(',')[0].toUpperCase() || 'LOKALIZACJA'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.distanceBadgeModern}>
+                    <MaterialCommunityIcons name="map-marker-distance" size={14} color="#fff" />
+                    <Text style={styles.distanceTextModern}>
+                      {userProfile?.lat && userProfile?.lng && item.lat && item.lng 
+                        ? `${calculateDistance(userProfile.lat, userProfile.lng, item.lat, item.lng)} KM STĄD` 
+                        : 'W TWOJEJ OKOLICY'}
+                    </Text>
+                  </View>
                 </View>
                 
-                <View style={styles.distanceBadgeModern}>
-                  <MaterialCommunityIcons name="map-marker-distance" size={14} color="#fff" />
-                  <Text style={styles.distanceTextModern}>
-                    {userProfile?.lat && userProfile?.lng && item.lat && item.lng 
-                      ? `${calculateDistance(userProfile.lat, userProfile.lng, item.lat, item.lng)} KM STĄD` 
-                      : 'W TWOJEJ OKOLICY'}
-                  </Text>
-                </View>
-              </View>
-              
-              {/* MIDDLE SECTION */}
-              <View style={styles.middleContainerModern}>
-                {item.isBlurred ? (
-                  <View style={styles.lockContainerModern}>
-                    <View style={styles.lockIconCircle}>
-                      <MaterialCommunityIcons name="shield-lock" size={50} color={Colors.primary} />
+                {/* MIDDLE SECTION */}
+                <View style={styles.middleContainerModern}>
+                  {item.isBlurred ? (
+                    <View style={styles.lockContainerModern}>
+                      <View style={styles.lockIconCircle}>
+                        <MaterialCommunityIcons name="shield-lock" size={50} color={Colors.primary} />
+                      </View>
+                      <Text style={styles.lockText}>Profil ukryty (Blind Hiring)</Text>
+                      <Text style={styles.lockSubtext}>Zdjęcie zobaczysz po dopasowaniu</Text>
                     </View>
-                    <Text style={styles.lockText}>Profil ukryty (Blind Hiring)</Text>
-                    <Text style={styles.lockSubtext}>Zdjęcie zobaczysz po dopasowaniu</Text>
-                  </View>
-                ) : (
-                  <View style={styles.priceCenterContainer}>
-                    <View style={styles.priceBadgeLarge}>
-                      <Text style={styles.priceLabelLarge}>STAWKA GODZINOWA</Text>
-                      <Text style={styles.priceValueLarge}>{item.price}</Text>
-                    </View>
-                  </View>
-                )}
-              </View>
-
-              {/* BOTTOM SECTION */}
-              <View style={styles.overlayContentModern}>
-                <View style={styles.headerRowModern}>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={styles.cardTitleModern}>{item.title}</Text>
-                      {item.isVerified && (
-                        <MaterialCommunityIcons name="check-decagram" size={24} color={Colors.primary} />
-                      )}
-                    </View>
-                    <Text style={styles.cardSubtitleModern}>{item.subtitle}</Text>
-                  </View>
-                  <IconButton 
-                    icon="gesture-tap" 
-                    iconColor={Colors.primary} 
-                    size={28} 
-                    onPress={toggleFlip} 
-                    style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: Colors.primary }} 
-                  />
-                </View>
-
-                <View style={styles.infoSectionModern}>
-                  {(item.description || item.bio) && (
-                    <View style={styles.descriptionBoxModern}>
-                      <Text style={styles.cardDescriptionModern} numberOfLines={3}>
-                        {item.description || item.bio}
-                      </Text>
-                    </View>
-                  )}
-
-                  {item.type === 'candidate' && item.experienceHistory && item.experienceHistory.length > 0 && (
-                    <View style={styles.experienceSnippetModern}>
-                      <MaterialCommunityIcons name="history" size={16} color={Colors.primary} style={{ marginRight: 8 }} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.experienceLabelModern}>OSTATNIE DOŚWIADCZENIE:</Text>
-                        <Text style={styles.experienceValueModern} numberOfLines={1}>
-                          {item.experienceHistory[0].position} @ {item.experienceHistory[0].company}
-                        </Text>
+                  ) : (
+                    <View style={styles.priceCenterContainer}>
+                      <View style={styles.priceBadgeLarge}>
+                        <Text style={styles.priceLabelLarge}>STAWKA GODZINOWA</Text>
+                        <Text style={styles.priceValueLarge}>{item.price}</Text>
                       </View>
                     </View>
                   )}
                 </View>
 
-                <View style={styles.tagGridModern}>
-                  {item.tags.map((tag, i) => (
-                    <View key={i} style={styles.tagModern}>
-                      <MaterialCommunityIcons name={tag.icon as any} size={14} color={Colors.primary} />
-                      <Text style={styles.tagTextModern}>{tag.text}</Text>
+                {/* BOTTOM SECTION */}
+                <View style={styles.overlayContentModern}>
+                  <View style={styles.headerRowModern}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.cardTitleModern}>{item.title}</Text>
+                        {item.isVerified && (
+                          <MaterialCommunityIcons name="check-decagram" size={24} color={Colors.primary} />
+                        )}
+                      </View>
+                      <Text style={styles.cardSubtitleModern}>{item.subtitle}</Text>
                     </View>
-                  ))}
+                  </View>
+
+                  <View style={styles.infoSectionModern}>
+                    {(item.description || item.bio) && (
+                      <View style={styles.descriptionBoxModern}>
+                        <Text style={styles.cardDescriptionModern} numberOfLines={3}>
+                          {item.description || item.bio}
+                        </Text>
+                      </View>
+                    )}
+
+                    {item.type === 'candidate' && item.experienceHistory && item.experienceHistory.length > 0 && (
+                      <View style={styles.experienceSnippetModern}>
+                        <MaterialCommunityIcons name="history" size={16} color={Colors.primary} style={{ marginRight: 8 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.experienceLabelModern}>OSTATNIE DOŚWIADCZENIE:</Text>
+                          <Text style={styles.experienceValueModern} numberOfLines={1}>
+                            {item.experienceHistory[0].position} @ {item.experienceHistory[0].company}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.tagGridModern}>
+                    {item.tags.map((tag, i) => (
+                      <View key={i} style={styles.tagModern}>
+                        <MaterialCommunityIcons name={tag.icon as any} size={14} color={Colors.primary} />
+                        <Text style={styles.tagTextModern}>{tag.text}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
-              </View>
-            </LinearGradient>
-          </ImageBackground>
-        </Card>
+              </LinearGradient>
+            </ImageBackground>
+          </Card>
+        </TouchableOpacity>
       </Animated.View>
 
       {/* BACK CARD */}
       <Animated.View style={[styles.cardContainerInner, styles.cardBack, { transform: [{ rotateY: backInterpolate }], opacity: backOpacity }]}>
-        <Card style={styles.card}>
-          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-            <View style={styles.backContent}>
-              <View style={styles.backHeader}>
-                <Text style={styles.backTitle}>{item.title}</Text>
-                <IconButton icon="close-circle-outline" iconColor={Colors.primary} size={30} onPress={toggleFlip} />
+        <TouchableOpacity activeOpacity={1} onPress={toggleFlip} style={{ flex: 1 }}>
+          <Card style={styles.card}>
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.backContent}>
+                <View style={styles.backHeader}>
+                  <Text style={styles.backTitle}>{item.title}</Text>
+                </View>
+                
+                <Divider style={styles.backDivider} />
+
+                {item.type === 'candidate' && (
+                  <>
+                    <Text style={styles.backSectionTitle}>Znajomość języków</Text>
+                    <View style={styles.backLanguagesGrid}>
+                      {item.languages && item.languages.length > 0 ? (
+                        item.languages.map((lang, idx) => (
+                          <View key={idx} style={styles.backLangItem}>
+                            <MaterialCommunityIcons name="translate" size={18} color={Colors.primary} />
+                            <Text style={styles.backLangName}>{lang.name}</Text>
+                            <Text style={styles.backLangLevel}>{lang.level}</Text>
+                          </View>
+                        ))
+                      ) : (
+                        <Text style={styles.backEmptyText}>Brak informacji o językach.</Text>
+                      )}
+                    </View>
+
+                    <Divider style={styles.backDivider} />
+
+                    <Text style={styles.backSectionTitle}>Umiejętności</Text>
+                    <View style={styles.backSkillsGrid}>
+                      {item.skills && item.skills.length > 0 ? (
+                        item.skills.map((skill, idx) => (
+                          <View key={idx} style={styles.backSkillBadge}>
+                            <Text style={styles.backSkillText}>{skill}</Text>
+                          </View>
+                        ))
+                      ) : (
+                        <Text style={styles.backEmptyText}>Brak listy umiejętności.</Text>
+                      )}
+                    </View>
+
+                    <Divider style={styles.backDivider} />
+
+                    <Text style={styles.backSectionTitle}>O mnie</Text>
+                    <Text style={styles.backBioText}>{item.bio || 'Brak opisu.'}</Text>
+                  </>
+                )}
+
+                {item.type === 'job' && (
+                  <>
+                    <Text style={styles.backSectionTitle}>Szczegóły oferty</Text>
+                    <Text style={styles.backBioText}>{item.description || 'Brak opisu.'}</Text>
+                    
+                    <Divider style={styles.backDivider} />
+                    
+                    <View style={styles.backJobInfoRow}>
+                      <MaterialCommunityIcons name="currency-usd" size={20} color={Colors.primary} />
+                      <View>
+                        <Text style={styles.backJobInfoLabel}>WYNAGRODZENIE</Text>
+                        <Text style={styles.backJobInfoValue}>{item.price}</Text>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.backJobInfoRow}>
+                      <MaterialCommunityIcons name="map-marker" size={20} color={Colors.primary} />
+                      <View>
+                        <Text style={styles.backJobInfoLabel}>LOKALIZACJA</Text>
+                        <Text style={styles.backJobInfoValue}>{item.locationName}</Text>
+                      </View>
+                    </View>
+                  </>
+                )}
               </View>
-              
-              <Divider style={styles.backDivider} />
-
-              {item.type === 'candidate' && (
-                <>
-                  <Text style={styles.backSectionTitle}>Znajomość języków</Text>
-                  <View style={styles.backLanguagesGrid}>
-                    {item.languages && item.languages.length > 0 ? (
-                      item.languages.map((lang, idx) => (
-                        <View key={idx} style={styles.backLangItem}>
-                          <MaterialCommunityIcons name="translate" size={18} color={Colors.primary} />
-                          <Text style={styles.backLangName}>{lang.name}</Text>
-                          <Text style={styles.backLangLevel}>{lang.level}</Text>
-                        </View>
-                      ))
-                    ) : (
-                      <Text style={styles.backEmptyText}>Brak informacji o językach.</Text>
-                    )}
-                  </View>
-
-                  <Divider style={styles.backDivider} />
-
-                  <Text style={styles.backSectionTitle}>Umiejętności</Text>
-                  <View style={styles.backSkillsGrid}>
-                    {item.skills && item.skills.length > 0 ? (
-                      item.skills.map((skill, idx) => (
-                        <View key={idx} style={styles.backSkillBadge}>
-                          <Text style={styles.backSkillText}>{skill}</Text>
-                        </View>
-                      ))
-                    ) : (
-                      <Text style={styles.backEmptyText}>Brak listy umiejętności.</Text>
-                    )}
-                  </View>
-
-                  <Divider style={styles.backDivider} />
-
-                  <Text style={styles.backSectionTitle}>O mnie</Text>
-                  <Text style={styles.backBioText}>{item.bio || 'Brak opisu.'}</Text>
-                </>
-              )}
-
-              {item.type === 'job' && (
-                <>
-                  <Text style={styles.backSectionTitle}>Szczegóły oferty</Text>
-                  <Text style={styles.backBioText}>{item.description || 'Brak opisu.'}</Text>
-                  
-                  <Divider style={styles.backDivider} />
-                  
-                  <View style={styles.backJobInfoRow}>
-                    <MaterialCommunityIcons name="currency-usd" size={20} color={Colors.primary} />
-                    <View>
-                      <Text style={styles.backJobInfoLabel}>WYNAGRODZENIE</Text>
-                      <Text style={styles.backJobInfoValue}>{item.price}</Text>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.backJobInfoRow}>
-                    <MaterialCommunityIcons name="map-marker" size={20} color={Colors.primary} />
-                    <View>
-                      <Text style={styles.backJobInfoLabel}>LOKALIZACJA</Text>
-                      <Text style={styles.backJobInfoValue}>{item.locationName}</Text>
-                    </View>
-                  </View>
-                </>
-              )}
-            </View>
-          </ScrollView>
-          <Button mode="contained" onPress={toggleFlip} style={styles.backCloseBtn} buttonColor={Colors.primary}>
-            Wróć do zdjęcia
-          </Button>
-        </Card>
+            </ScrollView>
+          </Card>
+        </TouchableOpacity>
       </Animated.View>
     </View>
   );
