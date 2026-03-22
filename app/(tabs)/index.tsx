@@ -1,6 +1,7 @@
-import { View, StyleSheet, Dimensions, Animated, PanResponder, ImageBackground, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { Card, Text, Button, Chip, IconButton, Portal, Dialog } from 'react-native-paper';
-import { useState, useRef, useEffect } from 'react';
+import { View, StyleSheet, Dimensions, Animated, PanResponder, ImageBackground, Image, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
+import { Card, Text, Button, Chip, IconButton, Portal, Dialog, Divider, SegmentedButtons } from 'react-native-paper';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../constants/Colors';
 import { Config } from '../../constants/Config';
 import { supabase } from '../../src/lib/supabase';
@@ -67,14 +68,44 @@ export default function SwipeScreen() {
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<CardData[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [searchRadius, setSearchRadius] = useState(10);
-  const [showRadiusDialog, setShowRadiusDialog] = useState(false);
+  const [showFilterDialog, setShowFilterDialog] = useState(false);
+  const [filters, setFilters] = useState({
+    radius: 20,
+    salaryMin: 0,
+    salaryMax: 1000, // Dla pracodawców szukających kandydatów
+    experience: [] as string[], // ['Junior', 'Mid', 'Senior']
+  });
   const position = useRef(new Animated.ValueXY()).current;
   const router = useRouter();
 
+  // Load filters from storage on mount
+  useEffect(() => {
+    const loadFilters = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('fajnarobota_filters');
+        if (saved) {
+          setFilters(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.error('Error loading filters', e);
+      }
+    };
+    loadFilters();
+  }, []);
+
+  // Save filters whenever they change
+  useEffect(() => {
+    AsyncStorage.setItem('fajnarobota_filters', JSON.stringify(filters));
+  }, [filters]);
+
   useEffect(() => {
     fetchData();
-  }, []);
+  }, []); // Refetch only on mount
+
+  const handleApplyFilters = () => {
+    setShowFilterDialog(false);
+    fetchData();
+  };
 
   const fetchData = async () => {
     try {
@@ -113,7 +144,7 @@ export default function SwipeScreen() {
           .rpc('get_jobs_within_radius', {
             user_lat: profile.lat || 52.2297, // Fallback do Warszawy jeśli brak w profilu
             user_lng: profile.lng || 21.0122,
-            radius_km: searchRadius
+            radius_km: filters.radius
           });
         
         if (jobsError) {
@@ -121,11 +152,19 @@ export default function SwipeScreen() {
           throw jobsError;
         }
 
-        logger.info(`Fetched ${jobs?.length || 0} jobs within radius ${searchRadius}km`);
+        logger.info(`Fetched ${jobs?.length || 0} jobs within radius ${filters.radius}km`);
 
         // Filtruj już swipe'owane
         if (swipedIds.length > 0) {
           jobs = jobs?.filter((j: any) => !swipedIds.includes(j.id)) || [];
+        }
+
+        // Filtruj po wynagrodzeniu (client-side because salary_range is text)
+        if (filters.salaryMin > 0 && jobs) {
+          jobs = jobs.filter((j: any) => {
+            const salary = parseInt(j.salary_range?.replace(/[^0-9]/g, '') || '0');
+            return salary >= filters.salaryMin;
+          });
         }
         
         if (jobs && jobs.length > 0) {
@@ -159,7 +198,7 @@ export default function SwipeScreen() {
           setCards(jobCards);
         } else {
           setCards([]);
-          setShowRadiusDialog(true);
+          // setShowRadiusDialog(true); // Don't auto-show, user has manual filter now
         }
       } else {
         // Pracodawca widzi kandydatów, których jeszcze nie ocenił
@@ -171,10 +210,15 @@ export default function SwipeScreen() {
           query = query.not('id', 'in', `(${swipedIds.join(',')})`);
         }
 
+        // Filtruj po doświadczeniu (SQL)
+        if (filters.experience.length > 0) {
+          query = query.in('experience', filters.experience);
+        }
+
         const { data: candidates } = await query;
         
         if (candidates) {
-          const candidateCards: CardData[] = candidates.map(cand => {
+          let candidateCards: CardData[] = candidates.map(cand => {
             const fullName = cand.profiles?.full_name || 'Kandydat';
             const age = cand.age ? ` ${cand.age}` : '';
             
@@ -211,8 +255,23 @@ export default function SwipeScreen() {
               locationName: cand.profiles?.location_name,
               lat: cand.profiles?.lat,
               lng: cand.profiles?.lng,
+              salaryExpectation: parseInt(cand.salary_expectation?.replace(/[^0-9]/g, '') || '0')
             };
           });
+
+          // Filtruj po dystansie (client-side)
+          if (profile.lat && profile.lng) {
+            candidateCards = candidateCards.filter(c => {
+              if (!c.lat || !c.lng) return true; // Keep if no location info
+              return calculateDistance(profile.lat, profile.lng, c.lat, c.lng) <= filters.radius;
+            });
+          }
+
+          // Filtruj po oczekiwaniach finansowych (salaryMax)
+          if (filters.salaryMax < 1000) {
+            candidateCards = candidateCards.filter(c => (c as any).salaryExpectation <= filters.salaryMax);
+          }
+
           setCards(candidateCards);
         }
       }
@@ -483,7 +542,12 @@ export default function SwipeScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text variant="headlineSmall" style={styles.logo}>FajnaRobota</Text>
-        <IconButton icon="filter-variant" size={24} onPress={() => {}} />
+        <IconButton 
+          icon="filter-variant" 
+          size={24} 
+          onPress={() => setShowFilterDialog(true)} 
+          iconColor={filters.salaryMin > 0 || filters.experience.length > 0 || filters.radius > 20 ? Colors.primary : Colors.textLight}
+        />
       </View>
 
       <View style={styles.cardContainer}>
@@ -495,15 +559,15 @@ export default function SwipeScreen() {
           <View style={styles.emptyState}>
             <MaterialCommunityIcons name="map-marker-radius-outline" size={80} color={Colors.textLight} />
             <Text variant="headlineSmall" style={{ textAlign: 'center' }}>
-              Brak ofert w Twojej okolicy ({searchRadius}km)
+              Brak ofert spełniających Twoje kryteria
             </Text>
             <Button 
               mode="contained" 
-              onPress={() => setShowRadiusDialog(true)}
+              onPress={() => setShowFilterDialog(true)}
               style={styles.refreshBtn}
               buttonColor={Colors.primary}
             >
-              Zwiększ zasięg szukania
+              Zmień filtry
             </Button>
           </View>
         )}
@@ -554,28 +618,128 @@ export default function SwipeScreen() {
       />
 
       <Portal>
-        <Dialog visible={showRadiusDialog} onDismiss={() => setShowRadiusDialog(false)} style={{ backgroundColor: Colors.surface }}>
-          <Dialog.Title style={{ fontFamily: 'Montserrat_700Bold' }}>Zwiększ zasięg szukania</Dialog.Title>
+        <Dialog visible={showFilterDialog} onDismiss={handleApplyFilters} style={styles.filterDialog}>
+          <Dialog.Title style={styles.filterTitle}>Filtry wyszukiwania</Dialog.Title>
           <Dialog.Content>
-            <Text variant="bodyMedium">Nie znaleźliśmy ofert w promieniu {searchRadius}km. O ile chcesz zwiększyć zasięg?</Text>
-            <View style={[styles.chipContainer, { marginTop: 20 }]}>
-              {[20, 50, 100, 500].map(radius => (
-                <Chip 
-                  key={radius} 
-                  onPress={() => {
-                    setSearchRadius(radius);
-                    setShowRadiusDialog(false);
-                    fetchData();
-                  }}
-                  style={{ backgroundColor: Colors.background }}
-                >
-                  +{radius - searchRadius > 0 ? radius - searchRadius : radius} km (Razem {radius}km)
-                </Chip>
-              ))}
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Sekcja Dystans */}
+              <View style={styles.filterSection}>
+                <View style={styles.filterLabelRow}>
+                  <Text variant="titleMedium" style={styles.filterLabel}>Maksymalny dystans</Text>
+                  <Text variant="titleMedium" style={styles.filterValue}>{filters.radius} km</Text>
+                </View>
+                <View style={styles.stepperContainer}>
+                  <IconButton icon="minus" mode="outlined" onPress={() => setFilters(f => ({ ...f, radius: Math.max(5, f.radius - 5) }))} />
+                  <View style={styles.stepperTrack}>
+                    <View style={[styles.stepperFill, { width: `${(filters.radius / 200) * 100}%` }]} />
+                  </View>
+                  <IconButton icon="plus" mode="outlined" onPress={() => setFilters(f => ({ ...f, radius: Math.min(200, f.radius + 5) }))} />
+                </View>
+              </View>
+
+              <Divider style={styles.filterDivider} />
+
+              {/* Sekcja Wynagrodzenie */}
+              <View style={styles.filterSection}>
+                <View style={styles.filterLabelRow}>
+                  <Text variant="titleMedium" style={styles.filterLabel}>
+                    {userProfile?.role === 'candidate' ? 'Minimalna stawka (zł/h)' : 'Maksymalna stawka (zł/h)'}
+                  </Text>
+                  <Text variant="titleMedium" style={styles.filterValue}>
+                    {userProfile?.role === 'candidate' ? filters.salaryMin : filters.salaryMax} zł
+                  </Text>
+                </View>
+                <View style={styles.stepperContainer}>
+                  <IconButton 
+                    icon="minus" 
+                    mode="outlined" 
+                    onPress={() => {
+                      if (userProfile?.role === 'candidate') {
+                        setFilters(f => ({ ...f, salaryMin: Math.max(0, f.salaryMin - 5) }));
+                      } else {
+                        setFilters(f => ({ ...f, salaryMax: Math.max(0, f.salaryMax - 5) }));
+                      }
+                    }} 
+                  />
+                  <View style={styles.stepperTrack}>
+                    <View 
+                      style={[
+                        styles.stepperFill, 
+                        { width: `${((userProfile?.role === 'candidate' ? filters.salaryMin : (filters.salaryMax === 1000 ? 0 : filters.salaryMax)) / 200) * 100}%` }
+                      ]} 
+                    />
+                  </View>
+                  <IconButton 
+                    icon="plus" 
+                    mode="outlined" 
+                    onPress={() => {
+                      if (userProfile?.role === 'candidate') {
+                        setFilters(f => ({ ...f, salaryMin: Math.min(500, f.salaryMin + 5) }));
+                      } else {
+                        setFilters(f => ({ ...f, salaryMax: Math.min(1000, f.salaryMax + 5) }));
+                      }
+                    }} 
+                  />
+                </View>
+                {userProfile?.role === 'employer' && filters.salaryMax >= 1000 && (
+                  <Text variant="labelSmall" style={{ textAlign: 'center', color: Colors.textLight }}>Dowolna stawka</Text>
+                )}
+              </View>
+
+              {userProfile?.role === 'employer' && (
+                <>
+                  <Divider style={styles.filterDivider} />
+                  <View style={styles.filterSection}>
+                    <Text variant="titleMedium" style={[styles.filterLabel, { marginBottom: 12 }]}>Doświadczenie</Text>
+                    <View style={styles.experienceChips}>
+                      {['Junior', 'Mid', 'Senior'].map(exp => (
+                        <Chip
+                          key={exp}
+                          selected={filters.experience.includes(exp)}
+                          onPress={() => {
+                            setFilters(f => ({
+                              ...f,
+                              experience: f.experience.includes(exp) 
+                                ? f.experience.filter(e => e !== exp) 
+                                : [...f.experience, exp]
+                            }));
+                          }}
+                          style={[
+                            styles.expChip,
+                            filters.experience.includes(exp) && { backgroundColor: Colors.primary }
+                          ]}
+                          textStyle={[
+                            styles.expChipText,
+                            filters.experience.includes(exp) && { color: '#fff' }
+                          ]}
+                          showSelectedOverlay
+                        >
+                          {exp}
+                        </Chip>
+                      ))}
+                    </View>
+                  </View>
+                </>
+              )}
+            </ScrollView>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setShowRadiusDialog(false)} textColor={Colors.textLight}>Anuluj</Button>
+            <Button 
+              onPress={() => {
+                const defaultFilters = {
+                  radius: 20,
+                  salaryMin: 0,
+                  salaryMax: 1000,
+                  experience: [],
+                };
+                setFilters(defaultFilters);
+                AsyncStorage.setItem('fajnarobota_filters', JSON.stringify(defaultFilters));
+              }}
+              textColor={Colors.error}
+            >
+              Resetuj
+            </Button>
+            <Button onPress={handleApplyFilters} mode="contained" buttonColor={Colors.primary}>Zastosuj</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -847,5 +1011,67 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  filterDialog: {
+    backgroundColor: Colors.surface,
+    borderRadius: 24,
+    maxHeight: '80%',
+  },
+  filterTitle: {
+    fontFamily: 'Montserrat_700Bold',
+    textAlign: 'center',
+    fontSize: 20,
+  },
+  filterSection: {
+    paddingVertical: 10,
+  },
+  filterLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  filterLabel: {
+    fontFamily: 'Montserrat_600SemiBold',
+    color: Colors.text,
+  },
+  filterValue: {
+    fontFamily: 'Montserrat_700Bold',
+    color: Colors.primary,
+  },
+  filterDivider: {
+    marginVertical: 10,
+    backgroundColor: Colors.border,
+  },
+  stepperContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 15,
+  },
+  stepperTrack: {
+    flex: 1,
+    height: 4,
+    backgroundColor: Colors.background,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  stepperFill: {
+    height: '100%',
+    backgroundColor: Colors.primary,
+  },
+  experienceChips: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  expChip: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+  },
+  expChipText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 12,
   },
 });
