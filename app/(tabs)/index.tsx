@@ -1,5 +1,6 @@
 import { View, StyleSheet, Dimensions, Animated, PanResponder, ImageBackground, Image, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
 import { Card, Text, Button, Chip, IconButton, Portal, Dialog, Divider, SegmentedButtons } from 'react-native-paper';
+import Slider from '@react-native-community/slider';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../constants/Colors';
@@ -628,13 +629,17 @@ export default function SwipeScreen() {
                   <Text variant="titleMedium" style={styles.filterLabel}>Maksymalny dystans</Text>
                   <Text variant="titleMedium" style={styles.filterValue}>{filters.radius} km</Text>
                 </View>
-                <View style={styles.stepperContainer}>
-                  <IconButton icon="minus" mode="outlined" onPress={() => setFilters(f => ({ ...f, radius: Math.max(5, f.radius - 5) }))} />
-                  <View style={styles.stepperTrack}>
-                    <View style={[styles.stepperFill, { width: `${(filters.radius / 200) * 100}%` }]} />
-                  </View>
-                  <IconButton icon="plus" mode="outlined" onPress={() => setFilters(f => ({ ...f, radius: Math.min(200, f.radius + 5) }))} />
-                </View>
+                <Slider
+                  style={{ width: '100%', height: 40 }}
+                  minimumValue={5}
+                  maximumValue={500}
+                  step={5}
+                  value={filters.radius}
+                  onValueChange={(value) => setFilters(f => ({ ...f, radius: value }))}
+                  minimumTrackTintColor={Colors.primary}
+                  maximumTrackTintColor={Colors.background}
+                  thumbTintColor={Colors.primary}
+                />
               </View>
 
               <Divider style={styles.filterDivider} />
@@ -649,38 +654,23 @@ export default function SwipeScreen() {
                     {userProfile?.role === 'candidate' ? filters.salaryMin : filters.salaryMax} zł
                   </Text>
                 </View>
-                <View style={styles.stepperContainer}>
-                  <IconButton 
-                    icon="minus" 
-                    mode="outlined" 
-                    onPress={() => {
-                      if (userProfile?.role === 'candidate') {
-                        setFilters(f => ({ ...f, salaryMin: Math.max(0, f.salaryMin - 5) }));
-                      } else {
-                        setFilters(f => ({ ...f, salaryMax: Math.max(0, f.salaryMax - 5) }));
-                      }
-                    }} 
-                  />
-                  <View style={styles.stepperTrack}>
-                    <View 
-                      style={[
-                        styles.stepperFill, 
-                        { width: `${((userProfile?.role === 'candidate' ? filters.salaryMin : (filters.salaryMax === 1000 ? 0 : filters.salaryMax)) / 200) * 100}%` }
-                      ]} 
-                    />
-                  </View>
-                  <IconButton 
-                    icon="plus" 
-                    mode="outlined" 
-                    onPress={() => {
-                      if (userProfile?.role === 'candidate') {
-                        setFilters(f => ({ ...f, salaryMin: Math.min(500, f.salaryMin + 5) }));
-                      } else {
-                        setFilters(f => ({ ...f, salaryMax: Math.min(1000, f.salaryMax + 5) }));
-                      }
-                    }} 
-                  />
-                </View>
+                <Slider
+                  style={{ width: '100%', height: 40 }}
+                  minimumValue={0}
+                  maximumValue={userProfile?.role === 'candidate' ? 500 : 1000}
+                  step={5}
+                  value={userProfile?.role === 'candidate' ? filters.salaryMin : filters.salaryMax}
+                  onValueChange={(value) => {
+                    if (userProfile?.role === 'candidate') {
+                      setFilters(f => ({ ...f, salaryMin: value }));
+                    } else {
+                      setFilters(f => ({ ...f, salaryMax: value }));
+                    }
+                  }}
+                  minimumTrackTintColor={Colors.primary}
+                  maximumTrackTintColor={Colors.background}
+                  thumbTintColor={Colors.primary}
+                />
                 {userProfile?.role === 'employer' && filters.salaryMax >= 1000 && (
                   <Text variant="labelSmall" style={{ textAlign: 'center', color: Colors.textLight }}>Dowolna stawka</Text>
                 )}
@@ -1042,23 +1032,6 @@ const styles = StyleSheet.create({
   filterDivider: {
     marginVertical: 10,
     backgroundColor: Colors.border,
-  },
-  stepperContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 15,
-  },
-  stepperTrack: {
-    flex: 1,
-    height: 4,
-    backgroundColor: Colors.background,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  stepperFill: {
-    height: '100%',
-    backgroundColor: Colors.primary,
   },
   experienceChips: {
     flexDirection: 'row',
