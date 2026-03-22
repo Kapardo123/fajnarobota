@@ -2,6 +2,7 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 're
 import { Avatar, Text, Button, List, Divider, ProgressBar, Chip, IconButton, TextInput, Card, ActivityIndicator } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
+import { Config } from '../../constants/Config';
 import { useState, useEffect } from 'react';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { supabase } from '../../src/lib/supabase';
@@ -32,6 +33,7 @@ interface CandidateDetails {
 interface EmployerDetails {
   company_name: string;
   company_description: string;
+  average_salary?: string;
 }
 
 export default function ProfileScreen() {
@@ -43,6 +45,7 @@ export default function ProfileScreen() {
   const [jobs, setJobs] = useState<JobOffer[]>([]);
   const [showAddJob, setShowAddJob] = useState(false);
   const [newJob, setNewJob] = useState({ title: '', salary: '', location: '' });
+  const [isEditingSalary, setIsEditingSalary] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -140,9 +143,55 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.replace('/');
+  const handleLogout = () => {
+    Alert.alert(
+      'Wyloguj się',
+      'Czy na pewno chcesz się wylogować?',
+      [
+        { text: 'Anuluj', style: 'cancel' },
+        { 
+          text: 'Wyloguj', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase.auth.signOut();
+              if (error) throw error;
+              router.replace('/');
+            } catch (error: any) {
+              console.error('Logout error:', error.message);
+              router.replace('/');
+            }
+          }
+        },
+      ]
+    );
+  };
+
+  const updateSalary = async (newSalary: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (profile?.role === 'candidate') {
+        const { error } = await supabase
+          .from('candidates')
+          .update({ salary_expectation: newSalary })
+          .eq('id', user.id);
+        if (error) throw error;
+        setCandidateDetails(prev => prev ? { ...prev, salary_expectation: newSalary } : null);
+      } else {
+        const { error } = await supabase
+          .from('employers')
+          .update({ average_salary: newSalary })
+          .eq('id', user.id);
+        if (error) throw error;
+        setEmployerDetails(prev => prev ? { ...prev, average_salary: newSalary } : null);
+      }
+      setIsEditingSalary(false);
+      Alert.alert('Sukces', 'Wynagrodzenie zostało zaktualizowane.');
+    } catch (error: any) {
+      Alert.alert('Błąd', 'Nie udało się zaktualizować wynagrodzenia.');
+    }
   };
 
   if (loading) {
@@ -206,6 +255,13 @@ export default function ProfileScreen() {
             description={candidateDetails?.skills?.join(', ')}
             left={props => <List.Icon {...props} icon="star-outline" color={Colors.primary} />}
           />
+          <List.Item
+            title="Oczekiwania finansowe"
+            description={candidateDetails?.salary_expectation || 'Nie ustawiono'}
+            left={props => <List.Icon {...props} icon="cash" color={Colors.primary} />}
+            right={props => <List.Icon {...props} icon="pencil-outline" color={Colors.textLight} />}
+            onPress={() => setIsEditingSalary(true)}
+          />
         </List.Section>
       </View>
     </>
@@ -235,6 +291,17 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
+        <List.Section>
+          <List.Subheader style={styles.listSubheader}>Ustawienia firmy</List.Subheader>
+          <List.Item
+            title="Średnie wynagrodzenie"
+            description={employerDetails?.average_salary || 'Nie ustawiono'}
+            left={props => <List.Icon {...props} icon="cash" color={Colors.primary} />}
+            right={props => <List.Icon {...props} icon="pencil-outline" color={Colors.textLight} />}
+            onPress={() => setIsEditingSalary(true)}
+          />
+        </List.Section>
+
         <View style={styles.sectionHeader}>
           <Text variant="titleLarge" style={styles.sectionTitle}>Moje oferty pracy</Text>
           <Button 
@@ -340,6 +407,48 @@ export default function ProfileScreen() {
             >
               Opublikuj ofertę
             </Button>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal edycji wynagrodzenia */}
+      <Modal visible={isEditingSalary} onDismiss={() => setIsEditingSalary(false)} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text variant="headlineSmall" style={styles.modalTitle}>
+                {profile?.role === 'candidate' ? 'Twoje oczekiwania' : 'Średnie zarobki'}
+              </Text>
+              <IconButton icon="close" onPress={() => setIsEditingSalary(false)} />
+            </View>
+
+            <View style={styles.chipContainer}>
+              {Config.SALARY_RANGES.map(range => (
+                <Chip 
+                  key={range}
+                  selected={
+                    profile?.role === 'candidate' 
+                    ? candidateDetails?.salary_expectation === range 
+                    : employerDetails?.average_salary === range
+                  }
+                  onPress={() => updateSalary(range)}
+                  style={[
+                    styles.chip,
+                    (profile?.role === 'candidate' 
+                      ? candidateDetails?.salary_expectation === range 
+                      : employerDetails?.average_salary === range) && { backgroundColor: Colors.primary }
+                  ]}
+                  showSelectedCheck={false}
+                  selectedColor={
+                    (profile?.role === 'candidate' 
+                      ? candidateDetails?.salary_expectation === range 
+                      : employerDetails?.average_salary === range) ? '#fff' : Colors.text
+                  }
+                >
+                  {range}
+                </Chip>
+              ))}
+            </View>
           </View>
         </View>
       </Modal>

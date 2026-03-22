@@ -23,7 +23,8 @@ create table public.employers (
   id uuid references public.profiles(id) on delete cascade not null primary key,
   company_name text,
   company_description text,
-  industry text
+  industry text,
+  average_salary text
 );
 
 -- Tabela ofert pracy

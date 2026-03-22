@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { Config } from '../../constants/Config';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { supabase } from '../../src/lib/supabase';
 
@@ -27,7 +28,7 @@ export default function RegisterScreen() {
     experience: 'Junior',
     profileMode: 'real' as 'real' | 'avatar' | 'work',
     blindHiring: true, // Domyślnie włączone
-    photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop', // Przykładowe zdjęcie
+    photoUrl: Config.DEFAULT_CANDIDATE_PHOTO,
   });
 
   // Employer data
@@ -36,7 +37,7 @@ export default function RegisterScreen() {
     position: '',
     salaryRange: '',
     description: '',
-    photoUrl: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?q=80&w=200&auto=format&fit=crop', // Przykładowe zdjęcie firmy
+    photoUrl: Config.DEFAULT_EMPLOYER_PHOTO,
   });
 
   const SKILLS_LIST = ['Gastronomia', 'Barista', 'Sprzedawca', 'Obsługa klienta', 'Magazynier', 'Student', 'Angielski B2', 'Kierowca'];
@@ -89,6 +90,7 @@ export default function RegisterScreen() {
             id: userId,
             company_name: employerData.companyName,
             company_description: employerData.description,
+            average_salary: employerData.salaryRange,
           });
         if (employerError) throw employerError;
       }
@@ -101,6 +103,8 @@ export default function RegisterScreen() {
       // Specyficzna obsługa błędu rate limit w Supabase
       if (error.status === 429 || errorMessage.includes('rate_limit')) {
         errorMessage = 'Przekroczono limit wysyłania e-maili w Supabase (Free Tier). Wyłącz "Confirm Email" w ustawieniach Supabase Auth lub spróbuj ponownie za godzinę.';
+      } else if (error.status === 422 || errorMessage.includes('already_exists')) {
+        errorMessage = 'Użytkownik o tym adresie e-mail już istnieje. Zaloguj się lub usuń starego użytkownika w Supabase Dashboard (Auth -> Users).';
       }
 
       Alert.alert('Błąd rejestracji', errorMessage);
@@ -240,16 +244,24 @@ export default function RegisterScreen() {
                   outlineColor={Colors.border}
                   activeOutlineColor={Colors.primary}
                 />
-                <TextInput
-                  label="Oczekiwania finansowe (min. PLN/h)"
-                  value={candidateData.salary}
-                  onChangeText={(text) => setCandidateData({...candidateData, salary: text})}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.input}
-                  outlineColor={Colors.border}
-                  activeOutlineColor={Colors.primary}
-                />
+                <Text style={styles.sectionLabel}>Oczekiwania finansowe</Text>
+                <View style={styles.chipContainer}>
+                  {Config.SALARY_RANGES.map(range => (
+                    <Chip 
+                      key={range}
+                      selected={candidateData.salary === range}
+                      onPress={() => setCandidateData({...candidateData, salary: range})}
+                      style={[
+                        styles.chip,
+                        candidateData.salary === range && { backgroundColor: Colors.primary }
+                      ]}
+                      showSelectedCheck={false}
+                      selectedColor={candidateData.salary === range ? '#fff' : Colors.text}
+                    >
+                      {range}
+                    </Chip>
+                  ))}
+                </View>
               </View>
             ) : (
               <View style={styles.form}>
@@ -262,6 +274,24 @@ export default function RegisterScreen() {
                   outlineColor={Colors.border}
                   activeOutlineColor={Colors.primary}
                 />
+                <Text style={styles.sectionLabel}>Oferowane wynagrodzenie (średnie)</Text>
+                <View style={styles.chipContainer}>
+                  {Config.SALARY_RANGES.map(range => (
+                    <Chip 
+                      key={range}
+                      selected={employerData.salaryRange === range}
+                      onPress={() => setEmployerData({...employerData, salaryRange: range})}
+                      style={[
+                        styles.chip,
+                        employerData.salaryRange === range && { backgroundColor: Colors.primary }
+                      ]}
+                      showSelectedCheck={false}
+                      selectedColor={employerData.salaryRange === range ? '#fff' : Colors.text}
+                    >
+                      {range}
+                    </Chip>
+                  ))}
+                </View>
                 <TextInput
                   label="Twój opis / O firmie"
                   value={employerData.description}
