@@ -910,9 +910,18 @@ export default function ProfileScreen() {
       </Modal>
 
       {/* Modal edycji wynagrodzenia */}
-      <Modal visible={isEditingSalary} onDismiss={() => setIsEditingSalary(false)} transparent={true} animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+      <Modal 
+        visible={isEditingSalary} 
+        onRequestClose={() => setIsEditingSalary(false)} 
+        transparent={true} 
+        animationType="slide"
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setIsEditingSalary(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeader}>
               <Text variant="headlineSmall" style={styles.modalTitle}>
                 {profile?.role === 'candidate' ? 'Twoje oczekiwania' : 'Średnie zarobki'}
@@ -954,13 +963,22 @@ export default function ProfileScreen() {
               ))}
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* Modal edycji Bio */}
-      <Modal visible={isEditingBio} onDismiss={() => setIsEditingBio(false)} transparent={true} animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+      <Modal 
+        visible={isEditingBio} 
+        onRequestClose={() => setIsEditingBio(false)} 
+        transparent={true} 
+        animationType="slide"
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setIsEditingBio(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeader}>
               <Text variant="headlineSmall" style={styles.modalTitle}>O mnie</Text>
               <IconButton icon="close" onPress={() => setIsEditingBio(false)} />
@@ -985,7 +1003,7 @@ export default function ProfileScreen() {
               Zapisz opis
             </Button>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* Modal edycji Dostępności */}
@@ -1026,7 +1044,7 @@ export default function ProfileScreen() {
               ))}
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* Modal edycji doświadczenia */}
