@@ -44,6 +44,7 @@ export default function RegisterScreen() {
     position: '',
     salaryRange: '',
     description: '',
+    nip: '',
     photoUrl: Config.DEFAULT_EMPLOYER_PHOTO,
     locationName: '',
     lat: 0,
@@ -144,6 +145,7 @@ export default function RegisterScreen() {
             company_name: employerData.companyName,
             company_description: employerData.description,
             average_salary: employerData.salaryRange,
+            nip: employerData.nip,
           });
         if (employerError) throw employerError;
       }
@@ -440,6 +442,25 @@ export default function RegisterScreen() {
                     activeOutlineColor={Colors.primary}
                   />
                   {errors.companyName && <Text style={styles.errorText}>{errors.companyName}</Text>}
+                </View>
+                <View>
+                  <TextInput
+                    label="NIP (Opcjonalnie - do weryfikacji)"
+                    value={employerData.nip}
+                    onChangeText={(text) => {
+                      // Tylko cyfry, max 10
+                      const cleanNip = text.replace(/[^0-9]/g, '').slice(0, 10);
+                      setEmployerData({...employerData, nip: cleanNip});
+                    }}
+                    mode="outlined"
+                    keyboardType="numeric"
+                    placeholder="Wpisz 10 cyfr NIP"
+                    style={styles.input}
+                    outlineColor={Colors.border}
+                    activeOutlineColor={Colors.primary}
+                    left={<TextInput.Icon icon="shield-check-outline" color={employerData.nip.length === 10 ? Colors.primary : Colors.textLight} />}
+                  />
+                  <Text style={styles.helperText}>Podanie NIP pozwala uzyskać odznakę zweryfikowanego pracodawcy.</Text>
                 </View>
                 <View style={{ zIndex: 1000 }}>
                   <LocationPicker
@@ -751,6 +772,13 @@ const styles = StyleSheet.create({
   errorText: {
     color: Colors.error,
     fontSize: 12,
+    fontFamily: 'Montserrat_400Regular',
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  helperText: {
+    fontSize: 11,
+    color: Colors.textLight,
     fontFamily: 'Montserrat_400Regular',
     marginTop: 4,
     marginLeft: 4,

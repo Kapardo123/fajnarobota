@@ -40,6 +40,8 @@ interface EmployerDetails {
   company_name: string;
   company_description: string;
   average_salary?: string;
+  is_verified?: boolean;
+  nip?: string;
 }
 
 export default function ProfileScreen() {
@@ -345,7 +347,67 @@ export default function ProfileScreen() {
             loading={uploading}
           />
         </View>
-        <Text variant="headlineSmall" style={styles.name}>{profile?.full_name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text variant="headlineSmall" style={styles.name}>{profile?.full_name}</Text>
+          {employerDetails?.is_verified && (
+            <MaterialCommunityIcons 
+              name="check-decagram" 
+              size={22} 
+              color={Colors.primary} 
+              style={{ marginLeft: 6 }} 
+            />
+          )}
+        </View>
+          {employerDetails?.is_verified && (
+            <MaterialCommunityIcons 
+              name="check-decagram" 
+              size={22} 
+              color={Colors.primary} 
+              style={{ marginLeft: 6 }} 
+            />
+          )}
+        </View>
+          {employerDetails?.is_verified && (
+            <MaterialCommunityIcons 
+              name="check-decagram" 
+              size={22} 
+              color={Colors.primary} 
+              style={{ marginLeft: 6 }} 
+            />
+          )}
+        </View>
+          {employerDetails?.is_verified && (
+            <MaterialCommunityIcons 
+              name="check-decagram" 
+              size={22} 
+              color={Colors.primary} 
+              style={{ marginLeft: 6 }} 
+            />
+          )}
+        </View>
+          {employerDetails?.is_verified && (
+            <MaterialCommunityIcons 
+              name="check-decagram" 
+              size={22} 
+              color={Colors.primary} 
+              style={{ marginLeft: 6 }} 
+            />
+          )}
+        </View>
+          {employerDetails?.is_verified && (
+            <MaterialCommunityIcons 
+              name="check-decagram" 
+              size={20} 
+              color={Colors.primary} 
+              style={{ marginLeft: 6 }} 
+            />
+          )}
+        </View>
         {candidateDetails?.superpower && (
           <Chip style={styles.superpowerBadge} textStyle={styles.superpowerText}>{candidateDetails.superpower}</Chip>
         )}

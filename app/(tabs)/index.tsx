@@ -25,6 +25,7 @@ interface CardData {
   tags: { icon: string; text: string }[];
   matchScore?: number;
   isBlurred?: boolean;
+  isVerified?: boolean;
 }
 
 export default function SwipeScreen() {
@@ -96,11 +97,11 @@ export default function SwipeScreen() {
         }
         
         if (jobs && jobs.length > 0) {
-          // Pobierz nazwy firm i logo dla tych ofert
+          // Pobierz nazwy firm i logo dla tych ofert, w tym is_verified z tabeli employers
           const employerIds = [...new Set(jobs.map((j: any) => j.employer_id))];
           const { data: employers } = await supabase
             .from('profiles')
-            .select('id, full_name, avatar_url')
+            .select('id, full_name, avatar_url, employers(is_verified)')
             .in('id', employerIds);
 
           const jobCards: CardData[] = jobs.map((job: any) => {
@@ -116,6 +117,7 @@ export default function SwipeScreen() {
                 { icon: 'map-marker', text: job.location_name || 'Lokalizacja' },
                 { icon: 'flash', text: 'Od zaraz' },
               ],
+              isVerified: employer?.employers?.[0]?.is_verified || false,
             };
           });
           setCards(jobCards);
@@ -127,7 +129,7 @@ export default function SwipeScreen() {
         // Pracodawca widzi kandydatów, których jeszcze nie ocenił
         let query = supabase
           .from('candidates')
-          .select('*, profiles(full_name, avatar_url)');
+          .select('*, profiles(full_name, avatar_url, employers(is_verified))');
         
         if (swipedIds.length > 0) {
           query = query.not('id', 'in', `(${swipedIds.join(',')})`);
@@ -306,7 +308,17 @@ export default function SwipeScreen() {
           )}
 
           <View style={styles.overlayContent}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              {item.isVerified && (
+                <MaterialCommunityIcons 
+                  name="check-decagram" 
+                  size={20} 
+                  color={Colors.primary} 
+                  style={{ marginLeft: 6 }} 
+                />
+              )}
+            </View>
             <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
             
             <View style={styles.priceBadge}>
