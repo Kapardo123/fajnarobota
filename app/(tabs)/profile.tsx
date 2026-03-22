@@ -64,24 +64,26 @@ export default function ProfileScreen() {
     
     try {
       setLoading(true);
+      console.log('Profile: Starting SignOut...');
       
-      // 1. Czekamy na faktyczne wylogowanie w Supabase
-      // To jest kluczowe, aby app/index.tsx nie zobaczyło starej sesji
+      // 1. Wyloguj w Supabase
       await supabase.auth.signOut();
       
-      // 2. Czyścimy stan lokalny
+      // 2. Dodatkowe wymuszone opóźnienie, aby Supabase na pewno wyczyściło storage
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // 3. Czyścimy stan lokalny
       setProfile(null);
       setCandidateDetails(null);
       setEmployerDetails(null);
       
-      console.log('--- LOGOUT SUCCESSFUL, REDIRECTING TO HERO ---');
+      console.log('Profile: SignOut done, redirecting...');
       
-      // 3. Przekierowanie do root (hero page)
+      // 4. Przekierowanie do root (hero page)
       router.replace('/');
       
     } catch (error: any) {
       logger.error('Logout error', error);
-      // Nawet w przypadku błędu próbujemy uciec z tego ekranu
       router.replace('/');
     } finally {
       setLoading(false);

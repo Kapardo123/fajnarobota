@@ -20,9 +20,14 @@ export default function LandingScreen() {
 
   const checkSession = async () => {
     try {
+      console.log('Landing: Checking session...');
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (session) {
+        console.log('Landing: Session found, redirecting to tabs');
         router.replace('/(tabs)');
+      } else {
+        console.log('Landing: No session, staying on hero page');
       }
     } catch (e) {
       console.error('Session check failed', e);
