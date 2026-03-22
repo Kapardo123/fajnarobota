@@ -1006,7 +1006,7 @@ export default function ProfileScreen() {
               <IconButton icon="close" onPress={() => setIsEditingAvailability(false)} />
             </View>
             <View style={styles.chipContainer}>
-              {['Od zaraz', 'W tygodniu', 'Tylko weekendy', 'Wieczorami', 'Dorywczo'].map(status => (
+              {['Od zaraz', 'W tygodniu', 'Tylko weekendy', 'Wieczorami', 'Dorywczo', 'Obecnie zatrudniony', 'Okres wypowiedzenia'].map(status => (
                 <Chip 
                   key={status}
                   selected={candidateDetails?.availability_status === status}
