@@ -6,8 +6,52 @@ import { View, ActivityIndicator } from 'react-native';
 import { supabase } from '../../src/lib/supabase';
 
 export default function TabsLayout() {
-  // Sesja jest teraz obsługiwana globalnie w app/_layout.tsx
-  // Nie potrzebujemy tu checkSession()
+  const [unreadCount, setUnreadCount] = useState<number | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUserId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        fetchUnreadCount(user.id);
+      }
+    };
+    getUserId();
+
+    // Subskrypcja na zmiany w wiadomościach
+    const channel = supabase
+      .channel('global-unread-count')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages' },
+        () => {
+          if (userId) fetchUnreadCount(userId);
+          else getUserId(); // Ponów próbę pobrania ID i licznika
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
+  const fetchUnreadCount = async (uid: string) => {
+    try {
+      const { count, error } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_read', false)
+        .neq('sender_id', uid);
+
+      if (error) throw error;
+      setUnreadCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
   return (
     <Tabs screenOptions={{ 
       headerShown: false,
@@ -30,6 +74,14 @@ export default function TabsLayout() {
         name="inbox"
         options={{
           title: 'Wiadomości',
+          tabBarBadge: unreadCount && unreadCount > 0 ? '' : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: '#4CAF50', // Zielona kropka
+            minWidth: 12,
+            height: 12,
+            borderRadius: 6,
+            marginTop: 4,
+          },
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="chat" size={size} color={color} />
           ),
