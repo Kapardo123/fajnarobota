@@ -605,7 +605,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',  },
+    alignItems: 'center',
+  },
   priceLabelLarge: {
     fontSize: 10,
     fontFamily: 'Montserrat_700Bold',
@@ -636,13 +637,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontFamily: 'Montserrat_800ExtraBold',
     fontSize: 18,
-    textAlign: 'center',  },
+    textAlign: 'center',
+  },
   lockSubtext: {
     color: 'rgba(255,255,255,0.6)',
     fontFamily: 'Montserrat_400Regular',
     fontSize: 13,
     marginTop: 4,
-    textAlign: 'center',  },
+    textAlign: 'center',
+  },
   overlayContentModern: {
     gap: 14,
     paddingBottom: 15, // Odstęp od dołu karty
@@ -665,7 +668,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   infoSectionModern: {
-    gap: 16, // Zwiększony gap  },
+    gap: 16,
+  },
   descriptionBoxModern: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     padding: 10,
