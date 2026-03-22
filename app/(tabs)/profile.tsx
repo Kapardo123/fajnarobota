@@ -59,6 +59,28 @@ export default function ProfileScreen() {
     fetchProfile();
   }, []);
 
+  const handleLogout = async () => {
+    console.log('--- LOGOUT INITIATED ---');
+    logger.action('Wyloguj (Bezpośrednio)');
+    
+    try {
+      // 1. Czyścimy stan lokalny natychmiast
+      setProfile(null);
+      setCandidateDetails(null);
+      setEmployerDetails(null);
+      
+      // 2. Przekierowanie natychmiastowe
+      router.replace('/');
+      
+      // 3. Supabase w tle
+      supabase.auth.signOut().catch(e => console.error('SignOut error:', e));
+      
+    } catch (error) {
+      console.error('Logout error:', error);
+      router.replace('/');
+    }
+  };
+
   const pickAndUploadImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -185,56 +207,6 @@ export default function ProfileScreen() {
         Alert.alert('Błąd', 'Nie udało się dodać oferty.');
       }
     }
-  };
-
-  const handleLogout = () => {
-    // 1. Zawsze logujemy do konsoli systemowej - najpewniejsze
-    console.log('--- LOGOUT CLICKED ---');
-    
-    // 2. Logger akcji
-    try {
-      logger.action('Wyloguj');
-    } catch (e) {
-      console.warn('Logger failed, but continuing logout', e);
-    }
-
-    // 3. Bezpieczny Alert
-    Alert.alert(
-      'Wyloguj się',
-      'Czy na pewno chcesz wyjść z konta?',
-      [
-        { text: 'Zostań', style: 'cancel' },
-        { 
-          text: 'Tak, Wyloguj', 
-          style: 'destructive',
-          onPress: async () => {
-            console.log('--- PERFORMING LOGOUT ---');
-            try {
-              // A. Supabase - nie czekamy na wynik, żeby nie wisiało
-              supabase.auth.signOut().catch(e => console.error('SignOut error:', e));
-              
-              // B. Czyścimy stan lokalny (opcjonalnie, bo i tak robimy replace)
-              setProfile(null);
-              setCandidateDetails(null);
-              setEmployerDetails(null);
-              
-              // C. Przekierowanie - najważniejsze
-              console.log('--- REDIRECTING ---');
-              router.replace('/');
-              
-              // D. Fallback po 500ms jeśli replace by nie zadziałało
-              setTimeout(() => {
-                router.push('/');
-              }, 500);
-            } catch (error: any) {
-              console.error('Fatal logout error:', error);
-              router.replace('/');
-            }
-          }
-        },
-      ],
-      { cancelable: true }
-    );
   };
 
   const updateSalary = async (newSalary: string) => {
@@ -492,6 +464,15 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <Button 
+        mode="contained" 
+        onPress={handleLogout}
+        buttonColor={Colors.error}
+        style={[styles.logoutBtn, { marginTop: 20 }]}
+        icon="logout"
+      >
+        Wyloguj (TEST)
+      </Button>
       {profile?.role === 'candidate' ? renderCandidateProfile() : renderEmployerProfile()}
 
       <View style={styles.section}>
