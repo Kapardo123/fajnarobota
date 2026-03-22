@@ -178,6 +178,24 @@ export default function SwipeScreen() {
             const fullName = cand.profiles?.full_name || 'Kandydat';
             const age = cand.age ? ` ${cand.age}` : '';
             
+            // Parsowanie bio (może być JSONem z dostępnością)
+            let displayBio = cand.bio || '';
+            let availability = '';
+            try {
+              if (displayBio.startsWith('{')) {
+                const bioData = JSON.parse(displayBio);
+                displayBio = bioData.text || '';
+                availability = bioData.availability || '';
+              }
+            } catch (e) {
+              // Jeśli to nie JSON, zostawiamy jak jest
+            }
+            
+            const tags = (cand.skills || []).map((skill: string) => ({ icon: 'star-outline', text: skill }));
+            if (availability) {
+              tags.unshift({ icon: 'clock-outline', text: availability });
+            }
+            
             return {
               id: cand.id,
               type: 'candidate',
@@ -185,10 +203,10 @@ export default function SwipeScreen() {
               subtitle: cand.superpower || 'Bohater',
               image: cand.profiles?.avatar_url || `https://picsum.photos/seed/${cand.id}/600/800`,
               price: `Min. ${cand.salary_expectation} zł/h`,
-              tags: (cand.skills || []).map((skill: string) => ({ icon: 'star-outline', text: skill })),
+              tags: tags,
               matchScore: 85 + Math.floor(Math.random() * 15),
               isBlurred: cand.blind_hiring,
-              bio: cand.bio,
+              bio: displayBio,
               experienceHistory: cand.experience_history,
               locationName: cand.profiles?.location_name,
               lat: cand.profiles?.lat,
