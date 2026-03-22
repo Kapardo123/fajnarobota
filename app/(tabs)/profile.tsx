@@ -60,41 +60,27 @@ export default function ProfileScreen() {
   }, []);
 
   const handleLogout = async () => {
-    logger.action('Wyloguj');
+    logger.action('Wyloguj (Próba)');
     
-    Alert.alert(
-      'Wyloguj się',
-      'Czy na pewno chcesz się wylogować?',
-      [
-        { text: 'Anuluj', style: 'cancel' },
-        {
-          text: 'Wyloguj',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              // 1. Wyloguj w Supabase - CZEKAMY, żeby sesja została wyczyszczona
-              const { error } = await supabase.auth.signOut();
-              if (error) throw error;
-              
-              // 2. Czyścimy stan lokalny
-              setProfile(null);
-              setCandidateDetails(null);
-              setEmployerDetails(null);
-              
-              // 3. Przekierowanie do strony głównej (Hero/Landing)
-              router.replace('/');
-            } catch (error: any) {
-              logger.error('Logout error', error);
-              // W razie błędu i tak próbujemy przenieść do startu
-              router.replace('/');
-            } finally {
-              setLoading(false);
-            }
-          }
-        }
-      ]
-    );
+    try {
+      // 1. Supabase SignOut (nie czekamy na wynik, żeby nie blokować)
+      supabase.auth.signOut().catch(e => console.error('SignOut error:', e));
+      
+      // 2. Czyścimy stan lokalny
+      setProfile(null);
+      setCandidateDetails(null);
+      setEmployerDetails(null);
+      
+      // 3. Wymuszamy nawigację do root
+      // Używamy setTimeout, aby upewnić się, że żadne inne procesy nie blokują routera
+      setTimeout(() => {
+        router.replace('/');
+      }, 0);
+      
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      router.replace('/');
+    }
   };
 
   const pickAndUploadImage = async () => {
