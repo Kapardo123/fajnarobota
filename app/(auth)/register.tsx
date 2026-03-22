@@ -9,6 +9,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase, uploadAvatar } from '../../src/lib/supabase';
 import { logger } from '../../src/lib/logger';
+import LocationPicker from '../../components/LocationPicker';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -32,6 +33,8 @@ export default function RegisterScreen() {
     blindHiring: true, // Domyślnie włączone
     photoUrl: Config.DEFAULT_CANDIDATE_PHOTO,
     locationName: '',
+    lat: 0,
+    lng: 0,
   });
 
   // Employer data
@@ -42,6 +45,8 @@ export default function RegisterScreen() {
     description: '',
     photoUrl: Config.DEFAULT_EMPLOYER_PHOTO,
     locationName: '',
+    lat: 0,
+    lng: 0,
   });
 
   const SKILLS_LIST = ['Gastronomia', 'Barista', 'Sprzedawca', 'Obsługa klienta', 'Magazynier', 'Student', 'Angielski B2', 'Kierowca'];
@@ -66,6 +71,16 @@ export default function RegisterScreen() {
   };
 
   const handleFinish = async () => {
+    // Walidacja lokalizacji
+    if (role === 'candidate' && !candidateData.lat) {
+      Alert.alert('Błąd', 'Wybierz lokalizację z listy.');
+      return;
+    }
+    if (role === 'employer' && !employerData.lat) {
+      Alert.alert('Błąd', 'Wybierz lokalizację firmy z listy.');
+      return;
+    }
+
     setLoading(true);
     try {
       // 1. Rejestracja w Supabase Auth
@@ -93,10 +108,6 @@ export default function RegisterScreen() {
       }
 
       // 3. Utworzenie profilu w tabeli profiles
-      // Symulacja geokodowania dla wybranej miejscowości
-      const mockLat = 52.2297 + (Math.random() - 0.5) * 0.5;
-      const mockLng = 21.0122 + (Math.random() - 0.5) * 0.5;
-
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
@@ -105,8 +116,8 @@ export default function RegisterScreen() {
           full_name: role === 'candidate' ? candidateData.name : employerData.companyName,
           avatar_url: finalAvatarUrl,
           location_name: role === 'candidate' ? candidateData.locationName : employerData.locationName,
-          lat: mockLat,
-          lng: mockLng,
+          lat: role === 'candidate' ? candidateData.lat : employerData.lat,
+          lng: role === 'candidate' ? candidateData.lng : employerData.lng,
         });
 
       if (profileError) throw profileError;
@@ -287,15 +298,15 @@ export default function RegisterScreen() {
                   outlineColor={Colors.border}
                   activeOutlineColor={Colors.primary}
                 />
-                <TextInput
+                <LocationPicker
                   label="Miejscowość"
-                  value={candidateData.locationName}
-                  onChangeText={(text) => setCandidateData({...candidateData, locationName: text})}
-                  mode="outlined"
+                  onLocationSelect={(loc) => setCandidateData({
+                    ...candidateData, 
+                    locationName: loc.name,
+                    lat: loc.lat,
+                    lng: loc.lng
+                  })}
                   style={styles.input}
-                  outlineColor={Colors.border}
-                  activeOutlineColor={Colors.primary}
-                  placeholder="np. Warszawa"
                 />
                 <Text style={styles.sectionLabel}>Oczekiwania finansowe</Text>
                 <View style={styles.chipContainer}>
@@ -327,15 +338,15 @@ export default function RegisterScreen() {
                   outlineColor={Colors.border}
                   activeOutlineColor={Colors.primary}
                 />
-                <TextInput
+                <LocationPicker
                   label="Miejscowość"
-                  value={employerData.locationName}
-                  onChangeText={(text) => setEmployerData({...employerData, locationName: text})}
-                  mode="outlined"
+                  onLocationSelect={(loc) => setEmployerData({
+                    ...employerData, 
+                    locationName: loc.name,
+                    lat: loc.lat,
+                    lng: loc.lng
+                  })}
                   style={styles.input}
-                  outlineColor={Colors.border}
-                  activeOutlineColor={Colors.primary}
-                  placeholder="np. Warszawa"
                 />
                 <Text style={styles.sectionLabel}>Oferowane wynagrodzenie (średnie)</Text>
                 <View style={styles.chipContainer}>

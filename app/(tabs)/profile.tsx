@@ -1,4 +1,4 @@
-import { View, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, Platform } from 'react-native';
 import { Avatar, Text, Button, List, Divider, ProgressBar, Chip, IconButton, TextInput, Card, ActivityIndicator } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
@@ -8,6 +8,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase, uploadAvatar } from '../../src/lib/supabase';
 import { logger } from '../../src/lib/logger';
+import LocationPicker from '../../components/LocationPicker';
 
 interface JobOffer {
   id: string;
@@ -49,10 +50,9 @@ export default function ProfileScreen() {
   const [employerDetails, setEmployerDetails] = useState<EmployerDetails | null>(null);
   const [jobs, setJobs] = useState<JobOffer[]>([]);
   const [showAddJob, setShowAddJob] = useState(false);
-  const [newJob, setNewJob] = useState({ title: '', salary: '', locationName: '' });
+  const [newJob, setNewJob] = useState({ title: '', salary: '', locationName: '', lat: 0, lng: 0 });
   const [isEditingSalary, setIsEditingSalary] = useState(false);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
-  const [locationInput, setLocationLocationInput] = useState('');
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -169,14 +169,10 @@ export default function ProfileScreen() {
   };
 
   const handleAddJob = async () => {
-    if (newJob.title && newJob.salary && newJob.locationName) {
+    if (newJob.title && newJob.salary && newJob.locationName && newJob.lat) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-
-        // Symulacja geokodowania dla nowej oferty
-        const mockLat = 52.2297 + (Math.random() - 0.5) * 0.5;
-        const mockLng = 21.0122 + (Math.random() - 0.5) * 0.5;
 
         const { data, error } = await supabase
           .from('jobs')
@@ -185,8 +181,8 @@ export default function ProfileScreen() {
             title: newJob.title,
             salary_range: newJob.salary,
             location_name: newJob.locationName,
-            lat: mockLat,
-            lng: mockLng,
+            lat: newJob.lat,
+            lng: newJob.lng,
           })
           .select()
           .single();
@@ -200,11 +196,15 @@ export default function ProfileScreen() {
           location: data.location_name,
           matches: 0
         }]);
-        setNewJob({ title: '', salary: '', locationName: '' });
+        setNewJob({ title: '', salary: '', locationName: '', lat: 0, lng: 0 });
         setShowAddJob(false);
+        Alert.alert('Sukces', 'Oferta pracy została dodana.');
       } catch (error: any) {
+        logger.error('Error adding job', error);
         Alert.alert('Błąd', 'Nie udało się dodać oferty.');
       }
+    } else {
+      Alert.alert('Błąd', 'Wypełnij wszystkie pola i wybierz lokalizację z listy.');
     }
   };
 
@@ -237,38 +237,29 @@ export default function ProfileScreen() {
     }
   };
 
-  const updateLocation = async () => {
-      logger.action('Zapis lokalizacji', { location: locationInput });
-      if (!locationInput.trim()) {
-        Alert.alert('Błąd', 'Wprowadź nazwę miejscowości.');
-      return;
-    }
-    
+  const updateLocation = async (loc: { name: string; lat: number; lng: number }) => {
     try {
       setLoading(true);
+      logger.action('Zaktualizowano lokalizację w profilu', { location: loc.name });
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      // Symulacja geokodowania
-      const mockLat = 52.2297 + (Math.random() - 0.5) * 0.5;
-      const mockLng = 21.0122 + (Math.random() - 0.5) * 0.5;
 
       const { error } = await supabase
         .from('profiles')
         .update({ 
-          location_name: locationInput,
-          lat: mockLat,
-          lng: mockLng
+          location_name: loc.name,
+          lat: loc.lat,
+          lng: loc.lng
         })
         .eq('id', user.id);
 
       if (error) throw error;
 
-      setProfile(prev => ({ ...prev!, location_name: locationInput, lat: mockLat, lng: mockLng }));
+      setProfile(prev => prev ? { ...prev, location_name: loc.name, lat: loc.lat, lng: loc.lng } : null);
       setIsEditingLocation(false);
       Alert.alert('Sukces', 'Lokalizacja została zaktualizowana.');
     } catch (error: any) {
-      console.error('Update location error:', error);
+      logger.error('Update location error', error);
       Alert.alert('Błąd', 'Nie udało się zaktualizować lokalizacji.');
     } finally {
       setLoading(false);
@@ -345,10 +336,7 @@ export default function ProfileScreen() {
             description={profile?.location_name || 'Nie ustawiono'}
             left={props => <List.Icon {...props} icon="map-marker" color={Colors.primary} />}
             right={props => <List.Icon {...props} icon="pencil-outline" color={Colors.textLight} />}
-            onPress={() => {
-              setLocationLocationInput(profile?.location_name || '');
-              setIsEditingLocation(true);
-            }}
+            onPress={() => setIsEditingLocation(true)}
           />
           <List.Item
             title="Moje Umiejętności"
@@ -416,10 +404,7 @@ export default function ProfileScreen() {
             description={profile?.location_name || 'Nie ustawiono'}
             left={props => <List.Icon {...props} icon="map-marker" color={Colors.primary} />}
             right={props => <List.Icon {...props} icon="pencil-outline" color={Colors.textLight} />}
-            onPress={() => {
-              setLocationLocationInput(profile?.location_name || '');
-              setIsEditingLocation(true);
-            }}
+            onPress={() => setIsEditingLocation(true)}
           />
         </List.Section>
 
@@ -512,14 +497,9 @@ export default function ProfileScreen() {
               outlineColor={Colors.border}
               activeOutlineColor={Colors.primary}
             />
-            <TextInput
-              label="Lokalizacja"
-              value={newJob.locationName}
-              onChangeText={(text) => setNewJob({...newJob, locationName: text})}
-              mode="outlined"
-              style={styles.modalInput}
-              outlineColor={Colors.border}
-              activeOutlineColor={Colors.primary}
+            <LocationPicker 
+              onLocationSelect={(loc) => setNewJob({ ...newJob, locationName: loc.name, lat: loc.lat, lng: loc.lng })}
+              placeholder="Lokalizacja oferty..."
             />
 
             <Button 
@@ -586,26 +566,10 @@ export default function ProfileScreen() {
               <IconButton icon="close" onPress={() => setIsEditingLocation(false)} />
             </View>
 
-            <TextInput
-              label="Miejscowość"
-              value={locationInput}
-              onChangeText={setLocationLocationInput}
-              mode="outlined"
-              style={styles.modalInput}
-              outlineColor={Colors.border}
-              activeOutlineColor={Colors.primary}
-              placeholder="np. Warszawa, Kraków..."
+            <LocationPicker 
+              onLocationSelect={updateLocation}
+              placeholder="Wyszukaj miasto..."
             />
-
-            <Button 
-              mode="contained" 
-              onPress={updateLocation}
-              style={styles.modalSubmitBtn}
-              buttonColor={Colors.primary}
-              contentStyle={styles.modalSubmitBtnContent}
-            >
-              Zapisz lokalizację
-            </Button>
           </View>
         </View>
       </Modal>
