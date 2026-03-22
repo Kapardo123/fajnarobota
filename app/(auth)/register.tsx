@@ -214,6 +214,13 @@ export default function RegisterScreen() {
 
       // 3. Zapisanie szczegółów roli
       if (role === 'candidate') {
+        // Zapisz języki i dostępność jako JSON w polu bio (zabezpieczenie przed brakiem kolumn w DB)
+        const bioMetadata = {
+          text: candidateData.bio,
+          availability: 'Od zaraz', // Domyślna wartość
+          languages: candidateData.languages
+        };
+
         const { error: candidateError } = await supabase
           .from('candidates')
           .insert({
@@ -224,9 +231,8 @@ export default function RegisterScreen() {
             superpower: candidateData.superpower,
             experience: candidateData.experience,
             blind_hiring: candidateData.blindHiring,
-            bio: candidateData.bio,
+            bio: JSON.stringify(bioMetadata),
             experience_history: candidateData.experienceHistory,
-            languages: candidateData.languages,
           });
         if (candidateError) throw candidateError;
       } else {

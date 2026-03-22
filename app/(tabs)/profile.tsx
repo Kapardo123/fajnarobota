@@ -232,6 +232,7 @@ export default function ProfileScreen() {
             const extraData = JSON.parse(candData.bio);
             processedCandData.availability_status = extraData.availability || '';
             processedCandData.bio = extraData.text || '';
+            processedCandData.languages = extraData.languages || [];
           }
         } catch (e) {
           // Jeśli bio nie jest JSONem, zostawiamy jak jest
@@ -460,7 +461,8 @@ export default function ProfileScreen() {
 
       const newBioData = {
         text: newBio,
-        availability: candidateDetails?.availability_status
+        availability: candidateDetails?.availability_status,
+        languages: candidateDetails?.languages || []
       };
 
       const { error } = await supabase
@@ -505,7 +507,8 @@ export default function ProfileScreen() {
 
       const newBioData = {
         text: candidateDetails?.bio || '',
-        availability: status
+        availability: status,
+        languages: candidateDetails?.languages || []
       };
 
       const { error } = await supabase
