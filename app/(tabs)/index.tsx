@@ -35,6 +35,8 @@ interface CardData {
   locationName?: string;
   lat?: number;
   lng?: number;
+  languages?: { name: string; level: string }[];
+  skills?: string[];
 }
 
 // Haversine formula to calculate distance between two points in km
@@ -69,6 +71,8 @@ export default function SwipeScreen() {
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<CardData[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const flipAnimation = useRef(new Animated.Value(0)).current;
   const [showFilterDialog, setShowFilterDialog] = useState(false);
   const [filters, setFilters] = useState({
     radius: 20,
@@ -226,17 +230,21 @@ export default function SwipeScreen() {
             // Parsowanie bio (może być JSONem z dostępnością)
             let displayBio = cand.bio || '';
             let availability = '';
+            let languages = [];
+            let skills = cand.skills || [];
+            
             try {
               if (displayBio.startsWith('{')) {
                 const bioData = JSON.parse(displayBio);
                 displayBio = bioData.text || '';
                 availability = bioData.availability || '';
+                languages = bioData.languages || [];
               }
             } catch (e) {
               // Jeśli to nie JSON, zostawiamy jak jest
             }
             
-            const tags = (cand.skills || []).map((skill: string) => ({ icon: 'star-outline', text: skill }));
+            const tags = skills.slice(0, 3).map((skill: string) => ({ icon: 'star-outline', text: skill }));
             if (availability) {
               tags.unshift({ icon: 'clock-outline', text: availability });
             }
@@ -256,7 +264,9 @@ export default function SwipeScreen() {
               locationName: cand.profiles?.location_name,
               lat: cand.profiles?.lat,
               lng: cand.profiles?.lng,
-              salaryExpectation: parseInt(cand.salary_expectation?.replace(/[^0-9]/g, '') || '0')
+              salaryExpectation: parseInt(cand.salary_expectation?.replace(/[^0-9]/g, '') || '0'),
+              languages: languages,
+              skills: skills
             };
           });
 
@@ -309,6 +319,17 @@ export default function SwipeScreen() {
       duration: FORCE_SWIPE_DURATION,
       useNativeDriver: false,
     }).start(() => onSwipeComplete(direction));
+  };
+
+  const toggleFlip = () => {
+    const toValue = isFlipped ? 0 : 180;
+    Animated.spring(flipAnimation, {
+      toValue,
+      friction: 8,
+      tension: 10,
+      useNativeDriver: true,
+    }).start();
+    setIsFlipped(!isFlipped);
   };
 
   const onSwipeComplete = async (direction: 'right' | 'left') => {
@@ -405,6 +426,8 @@ export default function SwipeScreen() {
     }
 
     position.setValue({ x: 0, y: 0 });
+    flipAnimation.setValue(0);
+    setIsFlipped(false);
     setIndex(prev => prev + 1);
   };
 
@@ -422,113 +445,224 @@ export default function SwipeScreen() {
     });
     return {
       ...position.getLayout(),
-      transform: [{ rotate }],
+      transform: [
+        { rotate },
+      ],
     };
   };
 
+  const frontInterpolate = flipAnimation.interpolate({
+    inputRange: [0, 180],
+    outputRange: ['0deg', '180deg'],
+  });
+
+  const backInterpolate = flipAnimation.interpolate({
+    inputRange: [0, 180],
+    outputRange: ['180deg', '360deg'],
+  });
+
+  const frontOpacity = flipAnimation.interpolate({
+    inputRange: [89, 90],
+    outputRange: [1, 0],
+  });
+
+  const backOpacity = flipAnimation.interpolate({
+    inputRange: [89, 90],
+    outputRange: [0, 1],
+  });
+
   const renderCard = (item: CardData) => (
-    <Card style={styles.card}>
-      <ImageBackground
-        source={{ uri: item.image }}
-        style={styles.cardImage}
-        blurRadius={item.isBlurred ? 40 : 0}
-        imageStyle={{ 
-          opacity: item.isBlurred ? 0.7 : 1,
-          resizeMode: 'cover' // Zapewnia wycentrowanie i wypełnienie całej karty
-        }}
-      >
-        <LinearGradient
-          colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)', '#000']}
-          locations={[0, 0.2, 0.4, 0.7, 1.0]}
-          style={styles.gradient}
-        >
-          {/* TOP SECTION */}
-          <View style={styles.topBadgesRow}>
-            <View style={styles.matchBadgeModern}>
-              <MaterialCommunityIcons name="map-marker" size={14} color={Colors.primary} />
-              <Text style={styles.matchTextModern}>
-                {item.locationName?.split(',')[0].toUpperCase() || 'LOKALIZACJA'}
-              </Text>
-            </View>
-            
-            <View style={styles.distanceBadgeModern}>
-              <MaterialCommunityIcons name="map-marker-distance" size={14} color="#fff" />
-              <Text style={styles.distanceTextModern}>
-                {userProfile?.lat && userProfile?.lng && item.lat && item.lng 
-                  ? `${calculateDistance(userProfile.lat, userProfile.lng, item.lat, item.lng)} KM STĄD` 
-                  : 'W TWOJEJ OKOLICY'}
-              </Text>
-            </View>
-          </View>
-          
-          {/* MIDDLE SECTION */}
-          <View style={styles.middleContainerModern}>
-            {item.isBlurred ? (
-              <View style={styles.lockContainerModern}>
-                <View style={styles.lockIconCircle}>
-                  <MaterialCommunityIcons name="shield-lock" size={50} color={Colors.primary} />
-                </View>
-                <Text style={styles.lockText}>Profil ukryty (Blind Hiring)</Text>
-                <Text style={styles.lockSubtext}>Zdjęcie zobaczysz po dopasowaniu</Text>
-              </View>
-            ) : (
-              <View style={styles.priceCenterContainer}>
-                <View style={styles.priceBadgeLarge}>
-                  <Text style={styles.priceLabelLarge}>STAWKA GODZINOWA</Text>
-                  <Text style={styles.priceValueLarge}>{item.price}</Text>
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* BOTTOM SECTION */}
-          <View style={styles.overlayContentModern}>
-            <View style={styles.headerRowModern}>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={styles.cardTitleModern}>{item.title}</Text>
-                  {item.isVerified && (
-                    <MaterialCommunityIcons name="check-decagram" size={24} color={Colors.primary} />
-                  )}
-                </View>
-                <Text style={styles.cardSubtitleModern}>{item.subtitle}</Text>
-              </View>
-            </View>
-
-            <View style={styles.infoSectionModern}>
-              {(item.description || item.bio) && (
-                <View style={styles.descriptionBoxModern}>
-                  <Text style={styles.cardDescriptionModern} numberOfLines={3}>
-                    {item.description || item.bio}
+    <View style={{ flex: 1 }}>
+      {/* FRONT CARD */}
+      <Animated.View style={[styles.cardContainerInner, { transform: [{ rotateY: frontInterpolate }], opacity: frontOpacity }]}>
+        <Card style={styles.card}>
+          <ImageBackground
+            source={{ uri: item.image }}
+            style={styles.cardImage}
+            blurRadius={item.isBlurred ? 40 : 0}
+            imageStyle={{ 
+              opacity: item.isBlurred ? 0.7 : 1,
+              resizeMode: 'cover'
+            }}
+          >
+            <LinearGradient
+              colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)', '#000']}
+              locations={[0, 0.2, 0.4, 0.7, 1.0]}
+              style={styles.gradient}
+            >
+              {/* TOP SECTION */}
+              <View style={styles.topBadgesRow}>
+                <View style={styles.matchBadgeModern}>
+                  <MaterialCommunityIcons name="map-marker" size={14} color={Colors.primary} />
+                  <Text style={styles.matchTextModern}>
+                    {item.locationName?.split(',')[0].toUpperCase() || 'LOKALIZACJA'}
                   </Text>
                 </View>
-              )}
-
-              {item.type === 'candidate' && item.experienceHistory && item.experienceHistory.length > 0 && (
-                <View style={styles.experienceSnippetModern}>
-                  <MaterialCommunityIcons name="history" size={16} color={Colors.primary} style={{ marginRight: 8 }} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.experienceLabelModern}>OSTATNIE DOŚWIADCZENIE:</Text>
-                    <Text style={styles.experienceValueModern} numberOfLines={1}>
-                      {item.experienceHistory[0].position} @ {item.experienceHistory[0].company}
-                    </Text>
+                
+                <View style={styles.distanceBadgeModern}>
+                  <MaterialCommunityIcons name="map-marker-distance" size={14} color="#fff" />
+                  <Text style={styles.distanceTextModern}>
+                    {userProfile?.lat && userProfile?.lng && item.lat && item.lng 
+                      ? `${calculateDistance(userProfile.lat, userProfile.lng, item.lat, item.lng)} KM STĄD` 
+                      : 'W TWOJEJ OKOLICY'}
+                  </Text>
+                </View>
+              </View>
+              
+              {/* MIDDLE SECTION */}
+              <View style={styles.middleContainerModern}>
+                {item.isBlurred ? (
+                  <View style={styles.lockContainerModern}>
+                    <View style={styles.lockIconCircle}>
+                      <MaterialCommunityIcons name="shield-lock" size={50} color={Colors.primary} />
+                    </View>
+                    <Text style={styles.lockText}>Profil ukryty (Blind Hiring)</Text>
+                    <Text style={styles.lockSubtext}>Zdjęcie zobaczysz po dopasowaniu</Text>
                   </View>
+                ) : (
+                  <View style={styles.priceCenterContainer}>
+                    <View style={styles.priceBadgeLarge}>
+                      <Text style={styles.priceLabelLarge}>STAWKA GODZINOWA</Text>
+                      <Text style={styles.priceValueLarge}>{item.price}</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* BOTTOM SECTION */}
+              <View style={styles.overlayContentModern}>
+                <View style={styles.headerRowModern}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={styles.cardTitleModern}>{item.title}</Text>
+                      {item.isVerified && (
+                        <MaterialCommunityIcons name="check-decagram" size={24} color={Colors.primary} />
+                      )}
+                    </View>
+                    <Text style={styles.cardSubtitleModern}>{item.subtitle}</Text>
+                  </View>
+                  <IconButton icon="information-outline" iconColor="#fff" size={24} onPress={toggleFlip} style={{ backgroundColor: 'rgba(255,255,255,0.1)' }} />
                 </View>
+
+                <View style={styles.infoSectionModern}>
+                  {(item.description || item.bio) && (
+                    <View style={styles.descriptionBoxModern}>
+                      <Text style={styles.cardDescriptionModern} numberOfLines={3}>
+                        {item.description || item.bio}
+                      </Text>
+                    </View>
+                  )}
+
+                  {item.type === 'candidate' && item.experienceHistory && item.experienceHistory.length > 0 && (
+                    <View style={styles.experienceSnippetModern}>
+                      <MaterialCommunityIcons name="history" size={16} color={Colors.primary} style={{ marginRight: 8 }} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.experienceLabelModern}>OSTATNIE DOŚWIADCZENIE:</Text>
+                        <Text style={styles.experienceValueModern} numberOfLines={1}>
+                          {item.experienceHistory[0].position} @ {item.experienceHistory[0].company}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.tagGridModern}>
+                  {item.tags.map((tag, i) => (
+                    <View key={i} style={styles.tagModern}>
+                      <MaterialCommunityIcons name={tag.icon as any} size={14} color={Colors.primary} />
+                      <Text style={styles.tagTextModern}>{tag.text}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </LinearGradient>
+          </ImageBackground>
+        </Card>
+      </Animated.View>
+
+      {/* BACK CARD */}
+      <Animated.View style={[styles.cardContainerInner, styles.cardBack, { transform: [{ rotateY: backInterpolate }], opacity: backOpacity }]}>
+        <Card style={styles.card}>
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+            <View style={styles.backContent}>
+              <View style={styles.backHeader}>
+                <Text style={styles.backTitle}>{item.title}</Text>
+                <IconButton icon="close-circle-outline" iconColor={Colors.primary} size={30} onPress={toggleFlip} />
+              </View>
+              
+              <Divider style={styles.backDivider} />
+
+              {item.type === 'candidate' && (
+                <>
+                  <Text style={styles.backSectionTitle}>Znajomość języków</Text>
+                  <View style={styles.backLanguagesGrid}>
+                    {item.languages && item.languages.length > 0 ? (
+                      item.languages.map((lang, idx) => (
+                        <View key={idx} style={styles.backLangItem}>
+                          <MaterialCommunityIcons name="translate" size={18} color={Colors.primary} />
+                          <Text style={styles.backLangName}>{lang.name}</Text>
+                          <Text style={styles.backLangLevel}>{lang.level}</Text>
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={styles.backEmptyText}>Brak informacji o językach.</Text>
+                    )}
+                  </View>
+
+                  <Divider style={styles.backDivider} />
+
+                  <Text style={styles.backSectionTitle}>Umiejętności</Text>
+                  <View style={styles.backSkillsGrid}>
+                    {item.skills && item.skills.length > 0 ? (
+                      item.skills.map((skill, idx) => (
+                        <View key={idx} style={styles.backSkillBadge}>
+                          <Text style={styles.backSkillText}>{skill}</Text>
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={styles.backEmptyText}>Brak listy umiejętności.</Text>
+                    )}
+                  </View>
+
+                  <Divider style={styles.backDivider} />
+
+                  <Text style={styles.backSectionTitle}>O mnie</Text>
+                  <Text style={styles.backBioText}>{item.bio || 'Brak opisu.'}</Text>
+                </>
+              )}
+
+              {item.type === 'job' && (
+                <>
+                  <Text style={styles.backSectionTitle}>Szczegóły oferty</Text>
+                  <Text style={styles.backBioText}>{item.description || 'Brak opisu.'}</Text>
+                  
+                  <Divider style={styles.backDivider} />
+                  
+                  <View style={styles.backJobInfoRow}>
+                    <MaterialCommunityIcons name="currency-usd" size={20} color={Colors.primary} />
+                    <View>
+                      <Text style={styles.backJobInfoLabel}>WYNAGRODZENIE</Text>
+                      <Text style={styles.backJobInfoValue}>{item.price}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.backJobInfoRow}>
+                    <MaterialCommunityIcons name="map-marker" size={20} color={Colors.primary} />
+                    <View>
+                      <Text style={styles.backJobInfoLabel}>LOKALIZACJA</Text>
+                      <Text style={styles.backJobInfoValue}>{item.locationName}</Text>
+                    </View>
+                  </View>
+                </>
               )}
             </View>
-
-            <View style={styles.tagGridModern}>
-              {item.tags.map((tag, i) => (
-                <View key={i} style={styles.tagModern}>
-                  <MaterialCommunityIcons name={tag.icon as any} size={14} color={Colors.primary} />
-                  <Text style={styles.tagTextModern}>{tag.text}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </LinearGradient>
-      </ImageBackground>
-    </Card>
+          </ScrollView>
+          <Button mode="contained" onPress={toggleFlip} style={styles.backCloseBtn} buttonColor={Colors.primary}>
+            Wróć do zdjęcia
+          </Button>
+        </Card>
+      </Animated.View>
+    </View>
   );
 
   if (loading) {
@@ -998,7 +1132,120 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
   },
-  tagMoreTextModern: {
+  cardContainerInner: {
+    flex: 1,
+    backfaceVisibility: 'hidden',
+  },
+  cardBack: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  backContent: {
+    padding: 20,
+    backgroundColor: '#fff',
+    flex: 1,
+  },
+  backHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  backTitle: {
+    fontFamily: 'Montserrat_900Black',
+    fontSize: 22,
+    color: Colors.text,
+    flex: 1,
+  },
+  backDivider: {
+    marginVertical: 15,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  backSectionTitle: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 16,
+    color: Colors.primary,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  backLanguagesGrid: {
+    gap: 8,
+  },
+  backLangItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    padding: 8,
+    borderRadius: 8,
+  },
+  backLangName: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 14,
+    color: Colors.text,
+    flex: 1,
+  },
+  backLangLevel: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 12,
+    color: Colors.primary,
+  },
+  backSkillsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  backSkillBadge: {
+    backgroundColor: 'rgba(0,200,83,0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0,200,83,0.15)',
+  },
+  backSkillText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 12,
+    color: Colors.text,
+  },
+  backBioText: {
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 14,
+    color: Colors.text,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  backEmptyText: {
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 12,
+    color: Colors.textLight,
+    fontStyle: 'italic',
+  },
+  backJobInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 15,
+  },
+  backJobInfoLabel: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 10,
+    color: Colors.textLight,
+    letterSpacing: 1,
+  },
+  backJobInfoValue: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 14,
+    color: Colors.text,
+  },
+  backCloseBtn: {
+    margin: 20,
+    borderRadius: 12,
+  },
+});  tagMoreTextModern: {
     color: Colors.primary,
     fontFamily: 'Montserrat_700Bold',
     fontSize: 12,
