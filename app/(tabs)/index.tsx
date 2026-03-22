@@ -523,12 +523,12 @@ const styles = StyleSheet.create({
   cardContainer: {
     flex: 1,
     padding: 16,
-    paddingTop: 60, // Zwiększony padding, aby karta była niżej pod logo
+    paddingTop: 80, // Dalsze obniżenie pod logo
     justifyContent: 'center',
   },
   cardWrapper: {
     width: '100%',
-    height: SCREEN_HEIGHT * 0.78, // Nieznacznie zmniejszona wysokość dla balansu (z 0.8)
+    height: SCREEN_HEIGHT * 0.76, // Kolejna korekta dla zachowania miejsca na stopkę
   },
   card: {
     flex: 1,
