@@ -41,7 +41,8 @@ export default function ChatScreen() {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          router.replace('/(auth)/login');
+          // Usunięte router.replace, aby uniknąć niechcianych cofnięć
+          console.log('User not authenticated in chat');
           return;
         }
         setUserId(user.id);
@@ -67,7 +68,7 @@ export default function ChatScreen() {
     };
 
     init();
-  }, [id]);
+  }, [id]); // Wyzwalaj tylko przy zmianie ID czatu
 
   useEffect(() => {
     if (!id || !userId) return;
