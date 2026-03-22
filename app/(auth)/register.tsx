@@ -328,7 +328,7 @@ export default function RegisterScreen() {
                   activeOutlineColor={Colors.primary}
                 />
                 <TextInput
-                  label="Miejscowość firmy"
+                  label="Miejscowość"
                   value={employerData.locationName}
                   onChangeText={(text) => setEmployerData({...employerData, locationName: text})}
                   mode="outlined"

@@ -199,29 +199,38 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              logger.action('Kliknięto przycisk "Wyloguj" w alercie');
               logger.info('Rozpoczynanie procesu wylogowania');
               
-              // 1. Wyloguj w Supabase
-              const { error } = await supabase.auth.signOut();
-              if (error) {
-                logger.error('Błąd podczas signOut w Supabase', error);
-                throw error;
+              // 1. Wyloguj w Supabase (nie czekamy wiecznie, timeout 3s)
+              const logoutPromise = supabase.auth.signOut();
+              const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('SignOut Timeout')), 3000));
+              
+              try {
+                await Promise.race([logoutPromise, timeoutPromise]);
+                logger.info('Supabase signOut zakończony pomyślnie');
+              } catch (e: any) {
+                logger.warn('SignOut ostrzeżenie (timeout lub błąd), kontynuujemy wylogowanie lokalne', { message: e.message });
               }
               
-              logger.info('Supabase signOut zakończony pomyślnie');
-              
-              // 2. Czyścimy stan lokalny
+              // 2. Czyścimy stan lokalny i przekierowujemy natychmiast
               setProfile(null);
               setCandidateDetails(null);
               setEmployerDetails(null);
               
-              // 3. Przekierowanie wymuszone (replace) do root
-              logger.info('Przekierowanie do strony głównej');
-              router.replace('/');
+              logger.info('Wymuszanie przekierowania do /');
+              
+              // Używamy setTimeout żeby upewnić się, że alert się zamknął i stan się zaktualizował
+              setTimeout(() => {
+                router.replace('/');
+                // Drugi fallback gdyby router.replace nie zadziałał
+                setTimeout(() => {
+                  router.push('/');
+                }, 500);
+              }, 100);
               
             } catch (error: any) {
-              logger.error('Krytyczny błąd wylogowania', { message: error.message });
-              Alert.alert('Błąd', 'Wystąpił problem podczas wylogowywania. Przekierowujemy do startu.');
+              logger.error('Błąd wylogowania', { message: error.message });
               router.replace('/');
             }
           }
