@@ -54,13 +54,22 @@ export default function RootLayout() {
     };
     checkInitialSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth Event:', event, session ? 'User logged in' : 'User logged out');
       
       const inTabsGroup = segments[0] === '(tabs)';
       
+      // Kluczowa zmiana: przy SIGNED_OUT natychmiast czyścimy wszystko i przekierowujemy
+      if (event === 'SIGNED_OUT') {
+        console.log('Auth: SIGNED_OUT detected, forcing redirect to hero...');
+        // Czyścimy cache routera i przekierowujemy
+        router.replace('/');
+        return;
+      }
+
       // Jeśli sesja wygasła lub została usunięta, a jesteśmy w tabsach
       if (!session && inTabsGroup) {
+        console.log('Auth: No session in tabs, redirecting to hero...');
         router.replace('/');
         return;
       }
@@ -69,12 +78,6 @@ export default function RootLayout() {
       if (event === 'SIGNED_IN' && session && !inTabsGroup) {
         console.log('Auth: User signed in, redirecting to tabs...');
         router.replace('/(tabs)');
-      }
-
-      // Po wylogowaniu upewniamy się, że nie ma żadnego przekierowania do tabsów
-      if (event === 'SIGNED_OUT') {
-        console.log('Auth: User signed out, redirecting to hero...');
-        router.replace('/');
       }
     });
 
