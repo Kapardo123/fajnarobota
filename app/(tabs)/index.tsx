@@ -736,38 +736,6 @@ export default function SwipeScreen() {
         )}
       </View>
 
-      {index < cards.length && (
-        <View style={styles.footer}>
-          <IconButton
-            icon="close"
-            mode="contained"
-            containerColor={Colors.error}
-            iconColor="#fff"
-            size={40}
-            onPress={() => forceSwipe('left')}
-            style={styles.actionBtn}
-          />
-          <IconButton
-            icon="star"
-            mode="contained"
-            containerColor={Colors.superJob}
-            iconColor="#fff"
-            size={28}
-            onPress={() => {}}
-            style={styles.actionBtn}
-          />
-          <IconButton
-            icon="heart"
-            mode="contained"
-            containerColor={Colors.primary}
-            iconColor="#fff"
-            size={40}
-            onPress={() => forceSwipe('right')}
-            style={styles.actionBtn}
-          />
-        </View>
-      )}
-
       <MatchModal
         visible={matchVisible}
         onHide={() => setMatchVisible(false)}
@@ -940,26 +908,27 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     flex: 1,
-    padding: 12,
-    paddingTop: 10, // Mniejszy padding od góry, logo jest wyżej
+    paddingHorizontal: 10,
+    paddingTop: 5,
+    paddingBottom: 20, // Większy odstęp od dolnego paska nawigacji
     justifyContent: 'center',
     alignItems: 'center',
   },
   cardWrapper: {
     width: '100%',
     height: '100%',
-    maxWidth: 500, // Ograniczenie dla tabletów/web
+    maxWidth: 500,
   },
   card: {
     flex: 1,
-    borderRadius: 28,
+    borderRadius: 32, // Jeszcze bardziej zaokrąglone rogi dla nowoczesnego wyglądu
     overflow: 'hidden',
-    elevation: 8,
+    elevation: 12,
     backgroundColor: '#000',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
   },
   cardImage: {
     flex: 1,
